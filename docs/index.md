@@ -34,7 +34,3 @@ Every public function includes an `R reference:` block in its docstring showing 
 ```bash
 pip install pyloseq
 ```
-
-## Status
-
-pyloseq is pre-alpha. The API follows the [implementation guide](https://github.com/mikedonovan/pyloseq/blob/main/scratch/pyloseq_implementation_guide.md) and is organized into six phases. Phase 0 (foundation) is in progress.
