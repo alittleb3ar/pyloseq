@@ -18,12 +18,12 @@ from hypothesis.extra.numpy import arrays as np_arrays
 import pyloseq
 from pyloseq import (
     OtuTable,
-    pyloseqValidationError,
     Phyloseq,
     PhyTree,
     RefSeq,
     SampleData,
     TaxTable,
+    pyloseqValidationError,
 )
 
 GOLDEN_PRESENT = Path("tests/golden/GlobalPatterns/otu_table.parquet").exists()

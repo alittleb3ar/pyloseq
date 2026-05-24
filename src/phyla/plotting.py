@@ -57,7 +57,7 @@ def plot_bar(
 
     R reference: plot_bar(physeq, x, y, fill, facet_grid, title)
     """
-    from plotnine import (  # type: ignore[import]
+    from plotnine import (  # type: ignore[import]  # type: ignore[import]
         aes,
         element_text,
         geom_bar,
@@ -65,9 +65,7 @@ def plot_bar(
         labs,
         theme,
     )
-    from plotnine import (
-        facet_grid as pg_facet_grid,
-    )
+    from plotnine import facet_grid as pg_facet_grid
 
     from pyloseq._manipulation import psmelt  # noqa: PLC0415
 

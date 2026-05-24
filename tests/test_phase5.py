@@ -13,13 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pyloseq import (
-    OtuTable,
-    Phyloseq,
-    PhyTree,
-    SampleData,
-    TaxTable,
-)
+from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
 from pyloseq._refseq import RefSeq
 
 GOLDEN_DIR = Path("tests/golden")
