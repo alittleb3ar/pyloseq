@@ -13,14 +13,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phyla import (
+from pyloseq import (
     OtuTable,
     Phyloseq,
     PhyTree,
     SampleData,
     TaxTable,
 )
-from phyla._refseq import RefSeq
+from pyloseq._refseq import RefSeq
 
 GOLDEN_DIR = Path("tests/golden")
 GP_PRESENT = (GOLDEN_DIR / "GlobalPatterns" / "otu_table.parquet").exists()
@@ -201,9 +201,9 @@ class TestFromAnnData:
 
     @pytest.mark.skipif(not GP_PRESENT, reason="golden files not generated yet")
     def test_round_trip_globalpatterns(self) -> None:
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
         ref = load_global_patterns_reference()
-        from phyla import SampleData, TaxTable
+        from pyloseq import SampleData, TaxTable
         ps = Phyloseq(
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
             sam=SampleData(ref["sample_data"]),
@@ -255,9 +255,9 @@ class TestPsDistanceMethod:
         assert "p-value" in result.index
 
     def test_unifrac_requires_tree(self) -> None:
-        from phyla._exceptions import PhylaValidationError
+        from pyloseq._exceptions import pyloseqValidationError
         ps = _make_ps(with_tree=False)
-        with pytest.raises(PhylaValidationError, match="phy_tree"):
+        with pytest.raises(pyloseqValidationError, match="phy_tree"):
             ps.distance("unifrac")
 
     def test_unifrac_with_tree(self) -> None:
@@ -286,16 +286,16 @@ class TestPsOrdinateMethod:
         assert isinstance(result, OrdinationResults)
 
     def test_unknown_method_raises(self) -> None:
-        from phyla._exceptions import PhylaValidationError
+        from pyloseq._exceptions import pyloseqValidationError
         ps = _make_ps()
-        with pytest.raises(PhylaValidationError, match="Unknown ordination method"):
+        with pytest.raises(pyloseqValidationError, match="Unknown ordination method"):
             ps.ordinate("UMAP")
 
     @pytest.mark.skipif(not ES_PRESENT, reason="golden files not generated yet")
     def test_pcoa_on_esophagus(self) -> None:
         from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
 
-        from phyla.testing.fixtures import load_esophagus_reference
+        from pyloseq.testing.fixtures import load_esophagus_reference
         ref = load_esophagus_reference()
         ps = Phyloseq(
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),

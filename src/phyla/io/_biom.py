@@ -55,10 +55,10 @@ def read_biom(
     """
     import biom
 
-    from phyla._otu_table import OtuTable
-    from phyla._phyloseq import Phyloseq
-    from phyla._sample_data import SampleData
-    from phyla._tax_table import TaxTable
+    from pyloseq._otu_table import OtuTable
+    from pyloseq._phyloseq import Phyloseq
+    from pyloseq._sample_data import SampleData
+    from pyloseq._tax_table import TaxTable
 
     table: biom.Table = biom.load_table(str(path))
 
@@ -174,7 +174,7 @@ def write_biom(
     path = Path(path)
     if version.startswith("1"):
         with open(path, "w") as fh:
-            table.to_json("phyla", direct_io=fh)
+            table.to_json("pyloseq", direct_io=fh)
     else:
         with h5py.File(str(path), "w") as hf:
-            table.to_hdf5(hf, "phyla")
+            table.to_hdf5(hf, "pyloseq")

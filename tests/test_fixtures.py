@@ -23,7 +23,7 @@ skip_no_golden = pytest.mark.skipif(
 # ---- import sanity (always runs) -------------------------------------------
 
 def test_testing_module_importable() -> None:
-    mod = importlib.import_module("phyla.testing")
+    mod = importlib.import_module("pyloseq.testing")
     for name in [
         "load_global_patterns_reference",
         "load_enterotype_reference",
@@ -31,11 +31,11 @@ def test_testing_module_importable() -> None:
         "load_soilrep_reference",
         "load_golden",
     ]:
-        assert hasattr(mod, name), f"phyla.testing missing: {name}"
+        assert hasattr(mod, name), f"pyloseq.testing missing: {name}"
 
 
 def test_load_missing_dataset_raises() -> None:
-    from phyla.testing.fixtures import _load_dataset
+    from pyloseq.testing.fixtures import _load_dataset
     with pytest.raises(FileNotFoundError):
         _load_dataset("nonexistent_dataset_xyz")
 
@@ -44,7 +44,7 @@ def test_load_missing_dataset_raises() -> None:
 
 @skip_no_golden
 def test_global_patterns_loads(benchmark: pytest.FixtureRequest) -> None:
-    from phyla.testing import load_global_patterns_reference
+    from pyloseq.testing import load_global_patterns_reference
     result = benchmark(load_global_patterns_reference)
     assert "otu_table" in result
     assert "taxa_sums" in result
@@ -53,7 +53,7 @@ def test_global_patterns_loads(benchmark: pytest.FixtureRequest) -> None:
 
 @skip_no_golden
 def test_global_patterns_otu_table_shape() -> None:
-    from phyla.testing import load_global_patterns_reference
+    from pyloseq.testing import load_global_patterns_reference
     ref = load_global_patterns_reference()
     # GlobalPatterns: 19216 taxa × 26 samples
     otu = ref["otu_table"]
@@ -64,14 +64,14 @@ def test_global_patterns_otu_table_shape() -> None:
 
 @skip_no_golden
 def test_global_patterns_tax_table_shape() -> None:
-    from phyla.testing import load_global_patterns_reference
+    from pyloseq.testing import load_global_patterns_reference
     ref = load_global_patterns_reference()
     assert ref["tax_table"].shape == (19216, 7)
 
 
 @skip_no_golden
 def test_enterotype_sample_data_shape() -> None:
-    from phyla.testing import load_enterotype_reference
+    from pyloseq.testing import load_enterotype_reference
     ref = load_enterotype_reference()
     # enterotype: 280 samples × 9 variables
     assert ref["sample_data"].shape == (280, 9)
@@ -79,7 +79,7 @@ def test_enterotype_sample_data_shape() -> None:
 
 @skip_no_golden
 def test_esophagus_has_tree() -> None:
-    from phyla.testing import load_esophagus_reference
+    from pyloseq.testing import load_esophagus_reference
     ref = load_esophagus_reference()
     assert "phy_tree_newick" in ref
     assert len(ref["phy_tree_newick"]) > 10
@@ -89,7 +89,7 @@ def test_esophagus_has_tree() -> None:
 def test_taxa_sums_is_series() -> None:
     import pandas as pd
 
-    from phyla.testing import load_global_patterns_reference
+    from pyloseq.testing import load_global_patterns_reference
     ref = load_global_patterns_reference()
     assert isinstance(ref["taxa_sums"], pd.Series)
     assert len(ref["taxa_sums"]) == 19216
@@ -97,14 +97,14 @@ def test_taxa_sums_is_series() -> None:
 
 @skip_no_golden
 def test_load_golden_estimate_richness() -> None:
-    from phyla.testing.fixtures import load_golden
+    from pyloseq.testing.fixtures import load_golden
     df = load_golden("GlobalPatterns", "estimate_richness")
     assert "Observed" in df.columns or "Shannon" in df.columns
 
 
 @skip_no_golden
 def test_provenance_readable() -> None:
-    from phyla.testing.fixtures import golden_provenance
+    from pyloseq.testing.fixtures import golden_provenance
     prov = golden_provenance()
     assert "phyloseq" in prov
     assert "R" in prov

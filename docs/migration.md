@@ -1,14 +1,14 @@
-# phyloseq → phyla migration guide
+# phyloseq → pyloseq migration guide
 
-Every public function in R phyloseq has a direct Python equivalent in phyla.
-The table below lists R signatures alongside their phyla counterparts and any
+Every public function in R phyloseq has a direct Python equivalent in pyloseq.
+The table below lists R signatures alongside their pyloseq counterparts and any
 behavioural differences worth noting.
 
 ---
 
 ## Core classes
 
-| R class / constructor | phyla equivalent | Notes |
+| R class / constructor | pyloseq equivalent | Notes |
 |---|---|---|
 | `phyloseq(otu, sam, tax, tree, refseq)` | `Phyloseq(otu, sam, tax, tree, refseq)` | Same component names |
 | `otu_table(matrix, taxa_are_rows)` | `OtuTable(df, taxa_are_rows)` | Accepts DataFrame or sparse matrix |
@@ -21,7 +21,7 @@ behavioural differences worth noting.
 
 ## Accessors
 
-| R | phyla | Notes |
+| R | pyloseq | Notes |
 |---|---|---|
 | `taxa_names(x)` | `ps.taxa_names` | `pd.Index` |
 | `sample_names(x)` | `ps.sample_names` | `pd.Index` |
@@ -44,7 +44,7 @@ behavioural differences worth noting.
 
 ## I/O
 
-| R | phyla | Notes |
+| R | pyloseq | Notes |
 |---|---|---|
 | `import_biom(file)` | `read_biom(path)` | BIOM v1 and v2 |
 | `export_biom(ps, file)` | `write_biom(ps, path)` | |
@@ -60,7 +60,7 @@ behavioural differences worth noting.
 
 ## Data manipulation
 
-| R | phyla | Notes |
+| R | pyloseq | Notes |
 |---|---|---|
 | `subset_samples(x, ...)` | `subset_samples(ps, predicate)` | `predicate(sample_df) → bool Series` |
 | `subset_taxa(x, ...)` | `subset_taxa(ps, predicate)` | `predicate(tax_df) → bool Series` |
@@ -81,7 +81,7 @@ behavioural differences worth noting.
 
 ## Analysis
 
-| R | phyla | Notes |
+| R | pyloseq | Notes |
 |---|---|---|
 | `estimate_richness(x, measures)` | `estimate_richness(ps, measures)` | Returns `pd.DataFrame` |
 | `distance(x, method, type)` | `distance(ps, method, type)` or `ps.distance(method)` | Returns `skbio.DistanceMatrix` |
@@ -93,7 +93,7 @@ behavioural differences worth noting.
 
 ## Plotting
 
-| R | phyla | Notes |
+| R | pyloseq | Notes |
 |---|---|---|
 | `plot_bar(x, x, fill, ...)` | `plot_bar(ps, x, fill, ...)` | Returns `plotnine.ggplot` |
 | `plot_richness(x, x, measures, ...)` | `plot_richness(ps, x, measures, ...)` | |
@@ -106,7 +106,7 @@ behavioural differences worth noting.
 
 ## Key behavioural differences
 
-| Topic | R phyloseq | phyla |
+| Topic | R phyloseq | pyloseq |
 |---|---|---|
 | **Mutation** | In-place via S4 replace methods | All functions return new objects |
 | **OTU table orientation** | `taxa_are_rows` attribute | Same; `taxa_are_rows=True` is default |

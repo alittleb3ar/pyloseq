@@ -9,12 +9,12 @@ from typing import Any
 
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
-from phyla._otu_table import OtuTable
-from phyla._refseq import RefSeq
-from phyla._sample_data import SampleData
-from phyla._tax_table import TaxTable
-from phyla._tree import PhyTree
+from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._otu_table import OtuTable
+from pyloseq._refseq import RefSeq
+from pyloseq._sample_data import SampleData
+from pyloseq._tax_table import TaxTable
+from pyloseq._tree import PhyTree
 
 
 class Phyloseq:
@@ -216,11 +216,11 @@ class Phyloseq:
     def melt(self) -> pd.DataFrame:
         """Melt to a long-form tidy DataFrame (one row per OTU × Sample pair).
 
-        Equivalent to the free function :func:`phyla.psmelt`.
+        Equivalent to the free function :func:`pyloseq.psmelt`.
 
         R reference: psmelt(physeq)
         """
-        from phyla._manipulation import psmelt
+        from pyloseq._manipulation import psmelt
 
         return psmelt(self)
 
@@ -231,7 +231,7 @@ class Phyloseq:
     def distance(self, method: str = "bray", **kwargs: Any) -> Any:
         """Compute a pairwise distance matrix.
 
-        Thin wrapper around :func:`phyla.distance` — returns a
+        Thin wrapper around :func:`pyloseq.distance` — returns a
         ``skbio.stats.distance.DistanceMatrix`` usable directly with
         ``skbio.stats.distance.permanova`` / ``anosim``.
 
@@ -244,7 +244,7 @@ class Phyloseq:
 
         R reference: distance(physeq, method)
         """
-        from phyla._distances import distance as _distance
+        from pyloseq._distances import distance as _distance
 
         return _distance(self, method, **kwargs)
 
@@ -257,7 +257,7 @@ class Phyloseq:
     ) -> Any:
         """Run multivariate ordination.
 
-        Thin wrapper around :func:`phyla.ordinate` — returns an
+        Thin wrapper around :func:`pyloseq.ordinate` — returns an
         ``skbio.stats.ordination.OrdinationResults``.
 
         Parameters
@@ -273,7 +273,7 @@ class Phyloseq:
 
         R reference: ordinate(physeq, method, distance, formula)
         """
-        from phyla._ordination import ordinate as _ordinate
+        from pyloseq._ordination import ordinate as _ordinate
 
         return _ordinate(self, method=method, distance=distance, formula=formula, **kwargs)
 
@@ -405,7 +405,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
     """
     # Rule 1 — OtuTable required
     if ps._otu is None:
-        raise PhylaValidationError("otu_table is required")
+        raise pyloseqValidationError("otu_table is required")
 
     otu_taxa = set(ps._otu.taxa_names)
 
@@ -423,7 +423,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
         taxa_intersection = taxa_intersection & s
 
     if len(taxa_intersection) == 0 and len(otu_taxa) > 0 and len(components_taxa) > 1:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             "Component taxa/OTU names do not match. Try taxa_names()"
         )
 
@@ -433,7 +433,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
         sam_samples = set(ps._sam.names)
         sample_intersection = otu_samples & sam_samples
         if len(sample_intersection) == 0:
-            raise PhylaValidationError(
+            raise pyloseqValidationError(
                 "Component sample names do not match. Try sample_names()"
             )
 
@@ -441,7 +441,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
     if len(taxa_intersection) < len(otu_taxa):
         if strict:
             only_otu = otu_taxa - taxa_intersection
-            raise PhylaValidationError(
+            raise pyloseqValidationError(
                 f"Component taxa/OTU names do not match. "
                 f"{len(only_otu)} taxa present only in otu_table. "
                 "Try taxa_names()"
@@ -455,7 +455,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
         sample_intersection = otu_samples & sam_samples
         if len(sample_intersection) < len(otu_samples):
             if strict:
-                raise PhylaValidationError(
+                raise pyloseqValidationError(
                     "Component sample names do not match. Try sample_names()"
                 )
             _prune_to_samples(ps, sorted(sample_intersection))

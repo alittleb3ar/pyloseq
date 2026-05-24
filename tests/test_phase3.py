@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import phyla
-from phyla import (
+import pyloseq
+from pyloseq import (
     OtuTable,
     Phyloseq,
     SampleData,
@@ -80,11 +80,11 @@ def _make_ps(
 
     tax = None
     if with_tax:
-        phyla_vals = ["Firmicutes", "Firmicutes", "Bacteroidetes", "Proteobacteria",
+        pyloseq_vals = ["Firmicutes", "Firmicutes", "Bacteroidetes", "Proteobacteria",
                       "Proteobacteria", "Chlamydiae"][:ntaxa]
         genus_vals = ["Genus_A", "Genus_A", "Genus_B", "Genus_C", "Genus_D", "Genus_E"][:ntaxa]
         tax_df = pd.DataFrame(
-            {"Phylum": phyla_vals, "Genus": genus_vals},
+            {"Phylum": pyloseq_vals, "Genus": genus_vals},
             index=taxa,
         )
         tax = TaxTable(tax_df)
@@ -98,7 +98,7 @@ def _make_ps_with_tree() -> Phyloseq:
 
     import skbio.tree
 
-    from phyla import PhyTree
+    from pyloseq import PhyTree
 
     newick = "((OTU1:0.1,OTU2:0.1):0.05,(OTU3:0.2,OTU4:0.1):0.05);"
     tree_node = skbio.tree.TreeNode.read(
@@ -199,18 +199,18 @@ class TestSubset:
 
     def test_subset_samples_no_sample_data_raises(self) -> None:
         ps = _make_ps(with_sam=False)
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             subset_samples(ps, lambda s: True)
 
     def test_subset_taxa_no_tax_table_raises(self) -> None:
         ps = _make_ps(with_tax=False)
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             subset_taxa(ps, lambda t: True)
 
     @pytest.mark.skipif(not GP_SUBSET_SOIL_PRESENT, reason="golden files not generated yet")
     def test_subset_samples_soil_matches_r(self) -> None:
         """subset_samples(GP, SampleType == 'Soil') → 3 samples."""
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         gp = Phyloseq(
@@ -239,7 +239,7 @@ class TestSubset:
 
     @pytest.mark.skipif(not GP_SUBSET_CHLAM_PRESENT, reason="golden files not generated yet")
     def test_subset_taxa_chlamydiae_matches_r(self) -> None:
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         gp = Phyloseq(
@@ -293,7 +293,7 @@ class TestFilterTaxa:
     @pytest.mark.skipif(not ET_FILTER_PRESENT, reason="golden files not generated yet")
     def test_filter_taxa_kOverA_matches_r_enterotype(self) -> None:
         """filter_taxa(enterotype, kOverA(5, 2e-5)) → 416 taxa × 280 samples."""
-        from phyla.testing.fixtures import load_enterotype_reference
+        from pyloseq.testing.fixtures import load_enterotype_reference
 
         ref = load_enterotype_reference()
         et = Phyloseq(
@@ -435,12 +435,12 @@ class TestTaxGlom:
 
     def test_glom_no_tax_raises(self) -> None:
         ps = _make_ps(with_tax=False)
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             tax_glom(ps, "Phylum")
 
     def test_glom_bad_rank_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             tax_glom(ps, "Species")
 
     def test_glom_preserves_sample_data(self) -> None:
@@ -463,7 +463,7 @@ class TestTaxGlom:
 
     @pytest.mark.skipif(not GP_TAXGLOM_PRESENT, reason="golden files not generated yet")
     def test_tax_glom_family_matches_r(self) -> None:
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         gp = Phyloseq(
@@ -502,7 +502,7 @@ class TestTipGlom:
 
     def test_tip_glom_no_tree_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             tip_glom(ps, h=0.1)
 
     def test_tip_glom_large_h_merges_all(self) -> None:
@@ -619,18 +619,18 @@ class TestMergeSamples:
 
     def test_merge_no_sample_data_raises(self) -> None:
         ps = _make_ps(with_sam=False)
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             merge_samples(ps, "Group")
 
     def test_merge_bad_variable_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             merge_samples(ps, "NoSuchColumn")
 
     @pytest.mark.skipif(not GP_MERGESAM_PRESENT, reason="golden files not generated yet")
     def test_merge_samples_sampletype_matches_r(self) -> None:
         """merge_samples(GP, 'SampleType') → 9 samples (one per SampleType)."""
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         gp = Phyloseq(
@@ -721,4 +721,4 @@ def test_manipulation_functions_exported() -> None:
         "merge_phyloseq", "merge_samples", "merge_taxa",
         "psmelt",
     ]:
-        assert hasattr(phyla, name), f"phyla.{name} not exported"
+        assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"

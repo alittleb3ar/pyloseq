@@ -1,4 +1,4 @@
-from phyla.testing.fixtures import (
+from pyloseq.testing.fixtures import (
     load_enterotype_reference,
     load_esophagus_reference,
     load_global_patterns_reference,

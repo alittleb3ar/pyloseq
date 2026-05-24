@@ -14,8 +14,8 @@ import pandas as pd
 import pytest
 import scipy.sparse as sp
 
-import phyla
-from phyla import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
+import pyloseq
+from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
 
 # ===========================================================================
 # Shared fixture factory
@@ -68,8 +68,8 @@ class TestBiomV1:
     def test_write_read_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps()
         p = tmp_path / "test.biom"
-        phyla.write_biom(ps, p, version="1.0")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="1.0")
+        ps2 = pyloseq.read_biom(p)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
         assert set(ps2.taxa_names) == set(ps.taxa_names)
@@ -78,31 +78,31 @@ class TestBiomV1:
     def test_taxonomy_preserved(self, tmp_path: Path) -> None:
         ps = _make_ps(with_tax=True)
         p = tmp_path / "tax.biom"
-        phyla.write_biom(ps, p, version="1.0")
-        ps2 = phyla.read_biom(p, parse_taxonomy="default")
+        pyloseq.write_biom(ps, p, version="1.0")
+        ps2 = pyloseq.read_biom(p, parse_taxonomy="default")
         assert ps2.tax_table is not None
         assert ps2.ntaxa == ps.ntaxa
 
     def test_sample_metadata_preserved(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=True)
         p = tmp_path / "sam.biom"
-        phyla.write_biom(ps, p, version="1.0")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="1.0")
+        ps2 = pyloseq.read_biom(p)
         assert ps2.sample_data is not None
         assert set(ps2.sample_data.variables) == {"group", "depth"}
 
     def test_no_taxonomy_parse_none(self, tmp_path: Path) -> None:
         ps = _make_ps(with_tax=True)
         p = tmp_path / "notax.biom"
-        phyla.write_biom(ps, p, version="1.0")
-        ps2 = phyla.read_biom(p, parse_taxonomy=None)
+        pyloseq.write_biom(ps, p, version="1.0")
+        ps2 = pyloseq.read_biom(p, parse_taxonomy=None)
         assert ps2.tax_table is None
 
     def test_abundance_values_preserved(self, tmp_path: Path) -> None:
         ps = _make_ps()
         p = tmp_path / "vals.biom"
-        phyla.write_biom(ps, p, version="1.0")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="1.0")
+        ps2 = pyloseq.read_biom(p)
         orig = ps.otu_table.taxa_sums().sort_index()
         rt = ps2.otu_table.taxa_sums().sort_index()
         np.testing.assert_allclose(orig.values, rt.values, atol=1e-6)
@@ -116,8 +116,8 @@ class TestBiomV2:
     def test_write_read_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps()
         p = tmp_path / "test_v2.biom"
-        phyla.write_biom(ps, p, version="2.1")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="2.1")
+        ps2 = pyloseq.read_biom(p)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -132,16 +132,16 @@ class TestBiomV2:
         ps = Phyloseq(otu=otu)
 
         p = tmp_path / "sparse.biom"
-        phyla.write_biom(ps, p, version="2.1")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="2.1")
+        ps2 = pyloseq.read_biom(p)
         assert ps2.ntaxa == 50
         assert ps2.nsamples == 10
 
     def test_hdf5_attributes_in_metadata(self, tmp_path: Path) -> None:
         ps = _make_ps()
         p = tmp_path / "attrs.biom"
-        phyla.write_biom(ps, p, version="2.1")
-        ps2 = phyla.read_biom(p)
+        pyloseq.write_biom(ps, p, version="2.1")
+        ps2 = pyloseq.read_biom(p)
         # HDF5 attrs written by biom-format include creation-date, etc.
         assert isinstance(ps2.metadata, dict)
 
@@ -149,18 +149,18 @@ class TestBiomV2:
         """Taxonomy written as list round-trips through qiime parse mode."""
         ps = _make_ps(with_tax=True)
         p = tmp_path / "qiime_tax.biom"
-        phyla.write_biom(ps, p, version="2.1")
-        ps2 = phyla.read_biom(p, parse_taxonomy="qiime")
+        pyloseq.write_biom(ps, p, version="2.1")
+        ps2 = pyloseq.read_biom(p, parse_taxonomy="qiime")
         assert ps2.tax_table is not None
 
     def test_v2_values_match_v1(self, tmp_path: Path) -> None:
         ps = _make_ps()
         p1 = tmp_path / "v1.biom"
         p2 = tmp_path / "v2.biom"
-        phyla.write_biom(ps, p1, version="1.0")
-        phyla.write_biom(ps, p2, version="2.1")
-        ps1 = phyla.read_biom(p1)
-        ps2 = phyla.read_biom(p2)
+        pyloseq.write_biom(ps, p1, version="1.0")
+        pyloseq.write_biom(ps, p2, version="2.1")
+        ps1 = pyloseq.read_biom(p1)
+        ps2 = pyloseq.read_biom(p2)
         s1 = ps1.otu_table.taxa_sums().sort_index()
         s2 = ps2.otu_table.taxa_sums().sort_index()
         np.testing.assert_allclose(s1.values, s2.values, atol=1e-6)
@@ -180,7 +180,7 @@ def _make_feature_table_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     qza_path = tmp_path / "feature-table.qza"
 
     biom_path = tmp_path / "ft.biom"
-    phyla.write_biom(ps, biom_path, version="2.1")
+    pyloseq.write_biom(ps, biom_path, version="2.1")
 
     meta = {"uuid": artifact_uuid, "type": "FeatureTable[Frequency]",
             "format": "BIOMV210DirFmt"}
@@ -236,7 +236,7 @@ class TestQza:
     def test_read_feature_table(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
         qza = _make_feature_table_qza(tmp_path, ps)
-        ps2 = phyla.read_qza(features=qza)
+        ps2 = pyloseq.read_qza(features=qza)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -244,7 +244,7 @@ class TestQza:
         ps = _make_ps(with_sam=False, with_tax=True)
         ft_qza = _make_feature_table_qza(tmp_path, ps)
         tax_qza = _make_taxonomy_qza(tmp_path, ps)
-        ps2 = phyla.read_qza(features=ft_qza, taxonomy=tax_qza)
+        ps2 = pyloseq.read_qza(features=ft_qza, taxonomy=tax_qza)
         assert ps2.tax_table is not None
         assert ps2.ntaxa == ps.ntaxa
 
@@ -252,7 +252,7 @@ class TestQza:
         ps = _make_ps(with_sam=False, with_tax=False, with_tree=True)
         ft_qza = _make_feature_table_qza(tmp_path, ps)
         tree_qza = _make_tree_qza(tmp_path, ps)
-        ps2 = phyla.read_qza(features=ft_qza, tree=tree_qza)
+        ps2 = pyloseq.read_qza(features=ft_qza, tree=tree_qza)
         assert ps2.phy_tree is not None
         assert ps2.phy_tree.n_tips == ps.ntaxa
 
@@ -265,21 +265,21 @@ class TestQza:
         artifact_uuid = str(_uuid_mod.uuid4())
         qza_path = tmp_path / "prov.qza"
         biom_path = tmp_path / "ft2.biom"
-        phyla.write_biom(ps, biom_path, version="2.1")
+        pyloseq.write_biom(ps, biom_path, version="2.1")
         meta = {"uuid": artifact_uuid, "type": "FeatureTable[Frequency]",
                 "format": "BIOMV210DirFmt"}
         with zipfile.ZipFile(str(qza_path), "w") as zf:
             zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
             zf.write(str(biom_path), f"{artifact_uuid}/data/feature-table.biom")
             zf.writestr(f"{artifact_uuid}/provenance/metadata.yaml", yaml.dump({"action": {}}))
-        ps2 = phyla.read_qza(features=qza_path)
+        ps2 = pyloseq.read_qza(features=qza_path)
         assert "qza_provenance" in ps2.metadata
 
     def test_write_read_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
         qza_out = tmp_path / "out.qza"
-        phyla.write_qza(ps, qza_out, semantic_type="FeatureTable[Frequency]")
-        ps2 = phyla.read_qza(features=qza_out)
+        pyloseq.write_qza(ps, qza_out, semantic_type="FeatureTable[Frequency]")
+        ps2 = pyloseq.read_qza(features=qza_out)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -293,12 +293,12 @@ class TestQza:
         with zipfile.ZipFile(str(qza_path), "w") as zf:
             zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
         with pytest.raises(ValueError, match="Unsupported"):
-            from phyla.io._qza import _read_qza_artifact
+            from pyloseq.io._qza import _read_qza_artifact
             _read_qza_artifact(qza_path)
 
     def test_no_features_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="features="):
-            phyla.read_qza()
+            pyloseq.read_qza()
 
 
 # ===========================================================================
@@ -342,7 +342,7 @@ class TestQiime1:
         ps = _make_ps(with_sam=False, with_tax=False)
         otu_path = tmp_path / "otu_table.txt"
         _write_qiime1_otu_table(otu_path, ps)
-        ps2 = phyla.read_qiime(otu_path)
+        ps2 = pyloseq.read_qiime(otu_path)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -350,7 +350,7 @@ class TestQiime1:
         ps = _make_ps(with_sam=False, with_tax=True)
         otu_path = tmp_path / "otu_tax.txt"
         _write_qiime1_otu_table(otu_path, ps)
-        ps2 = phyla.read_qiime(otu_path)
+        ps2 = pyloseq.read_qiime(otu_path)
         assert ps2.tax_table is not None
 
     def test_with_mapping(self, tmp_path: Path) -> None:
@@ -359,7 +359,7 @@ class TestQiime1:
         map_path = tmp_path / "mapping.txt"
         _write_qiime1_otu_table(otu_path, ps)
         _write_qiime1_mapping(map_path, ps)
-        ps2 = phyla.read_qiime(otu_path, mapping=map_path)
+        ps2 = pyloseq.read_qiime(otu_path, mapping=map_path)
         assert ps2.sample_data is not None
         assert ps2.nsamples == ps.nsamples
 
@@ -367,7 +367,7 @@ class TestQiime1:
         ps = _make_ps(with_sam=False, with_tax=False)
         otu_path = tmp_path / "otu_vals.txt"
         _write_qiime1_otu_table(otu_path, ps)
-        ps2 = phyla.read_qiime(otu_path)
+        ps2 = pyloseq.read_qiime(otu_path)
         orig = ps.otu_table.taxa_sums().sort_index()
         rt = ps2.otu_table.taxa_sums().sort_index()
         np.testing.assert_allclose(orig.values, rt.values, atol=1.0)  # int round-trip
@@ -381,7 +381,7 @@ class TestQiime1:
             for otu_id in df.index:
                 row = "\t".join(str(int(v)) for v in df.loc[otu_id])
                 fh.write(f"{otu_id}\t{row}\t\n")
-        ps2 = phyla.read_qiime(otu_path)
+        ps2 = pyloseq.read_qiime(otu_path)
         assert ps2.tax_table is None
 
 
@@ -418,7 +418,7 @@ class TestMothur:
         ps = _make_ps(with_sam=False, with_tax=False)
         shared = tmp_path / "test.shared"
         _write_mothur_shared(shared, ps)
-        ps2 = phyla.read_mothur(shared=shared)
+        ps2 = pyloseq.read_mothur(shared=shared)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -428,7 +428,7 @@ class TestMothur:
         constax = tmp_path / "test.cons.taxonomy"
         _write_mothur_shared(shared, ps)
         _write_mothur_constaxonomy(constax, ps)
-        ps2 = phyla.read_mothur(shared=shared, constaxonomy=constax)
+        ps2 = pyloseq.read_mothur(shared=shared, constaxonomy=constax)
         assert ps2.tax_table is not None
         assert ps2.ntaxa == ps.ntaxa
 
@@ -445,7 +445,7 @@ class TestMothur:
                 for sample in df.index:
                     vals = "\t".join(str(int(v)) for v in df.loc[sample])
                     fh.write(f"{cutoff}\t{sample}\t{len(otus)}\t{vals}\n")
-        ps2 = phyla.read_mothur(shared=shared, cutoff="0.05")
+        ps2 = pyloseq.read_mothur(shared=shared, cutoff="0.05")
         assert ps2.ntaxa == ps.ntaxa
 
     def test_show_cutoffs(self, tmp_path: Path) -> None:
@@ -461,12 +461,12 @@ class TestMothur:
                 for sample in df.index:
                     vals = "\t".join(str(int(v)) for v in df.loc[sample])
                     fh.write(f"{cutoff}\t{sample}\t{len(otus)}\t{vals}\n")
-        cutoffs = phyla.show_mothur_cutoffs(shared)
+        cutoffs = pyloseq.show_mothur_cutoffs(shared)
         assert set(cutoffs) == {"0.03", "0.05", "0.10"}
 
     def test_no_source_raises(self) -> None:
         with pytest.raises(ValueError):
-            phyla.read_mothur()
+            pyloseq.read_mothur()
 
 
 # ===========================================================================
@@ -476,16 +476,16 @@ class TestMothur:
 class TestCsv:
     def test_otu_only_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
-        phyla.to_csv(ps, tmp_path / "out")
-        ps2 = phyla.read_csv(tmp_path / "out" / "otu_table.tsv")
+        pyloseq.to_csv(ps, tmp_path / "out")
+        ps2 = pyloseq.read_csv(tmp_path / "out" / "otu_table.tsv")
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
     def test_full_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=True, with_tax=True, with_tree=True)
         out = tmp_path / "full"
-        written = phyla.to_csv(ps, out)
-        ps2 = phyla.read_csv(
+        written = pyloseq.to_csv(ps, out)
+        ps2 = pyloseq.read_csv(
             written["otu_table"],
             sample_path=written["sample_data"],
             tax_path=written["tax_table"],
@@ -500,23 +500,23 @@ class TestCsv:
     def test_abundance_values_preserved(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
         out = tmp_path / "vals"
-        written = phyla.to_csv(ps, out)
-        ps2 = phyla.read_csv(written["otu_table"])
+        written = pyloseq.to_csv(ps, out)
+        ps2 = pyloseq.read_csv(written["otu_table"])
         orig = ps.otu_table.taxa_sums().sort_index()
         rt = ps2.otu_table.taxa_sums().sort_index()
         np.testing.assert_allclose(orig.values, rt.values, atol=1e-10)
 
     def test_prefix_option(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
-        phyla.to_csv(ps, tmp_path / "pfx", prefix="myproject_")
+        pyloseq.to_csv(ps, tmp_path / "pfx", prefix="myproject_")
         assert (tmp_path / "pfx" / "myproject_otu_table.tsv").exists()
 
     def test_taxa_are_rows_false(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
         ps.otu_table.taxa_are_rows = False
         out = tmp_path / "flipped"
-        written = phyla.to_csv(ps, out)
-        ps2 = phyla.read_csv(written["otu_table"], taxa_are_rows=False)
+        written = pyloseq.to_csv(ps, out)
+        ps2 = pyloseq.read_csv(written["otu_table"], taxa_are_rows=False)
         assert ps2.ntaxa == ps.ntaxa
         assert ps2.nsamples == ps.nsamples
 
@@ -529,4 +529,4 @@ def test_io_functions_exported() -> None:
     for name in ["read_biom", "write_biom", "read_qza", "write_qza",
                  "read_qiime", "read_mothur", "show_mothur_cutoffs",
                  "select_mothur_cutoff", "read_csv", "to_csv"]:
-        assert hasattr(phyla, name), f"phyla.{name} not exported"
+        assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"

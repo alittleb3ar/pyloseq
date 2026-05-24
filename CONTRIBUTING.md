@@ -1,12 +1,12 @@
-# Contributing to phyla
+# Contributing to pyloseq
 
 Thank you for contributing! This document covers the development workflow.
 
 ## Setup
 
 ```bash
-git clone https://github.com/mikedonovan/phyla
-cd phyla
+git clone https://github.com/mikedonovan/pyloseq
+cd pyloseq
 pip install -e ".[dev]"
 pre-commit install
 ```
@@ -25,7 +25,7 @@ Or directly:
 ```bash
 pytest tests/ -v
 ruff check src tests
-mypy src/phyla
+mypy src/pyloseq
 ```
 
 ## Pull requests
@@ -64,6 +64,6 @@ A Docker image with the pinned R environment is documented in `docs/golden_files
 
 Open an issue on GitHub with a minimal reproducible example and the output of:
 ```python
-import phyla; print(phyla.__version__)
+import pyloseq; print(pyloseq.__version__)
 import sys; print(sys.version)
 ```

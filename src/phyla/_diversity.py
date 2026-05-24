@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
+from pyloseq._exceptions import pyloseqValidationError
 
 _ALL_MEASURES = [
     "Observed", "Chao1", "se.chao1", "ACE", "se.ACE",
@@ -42,7 +42,7 @@ def estimate_richness(
 
     R reference: estimate_richness(physeq, split, measures)
     """
-    from phyla._phyloseq import Phyloseq  # noqa: PLC0415
+    from pyloseq._phyloseq import Phyloseq  # noqa: PLC0415
 
     if not isinstance(ps, Phyloseq):
         raise TypeError(f"ps must be a Phyloseq, got {type(ps)!r}")
@@ -52,7 +52,7 @@ def estimate_richness(
     else:
         bad = [m for m in measures if m not in _ALL_MEASURES]
         if bad:
-            raise PhylaValidationError(
+            raise pyloseqValidationError(
                 f"Unknown measure(s): {bad}. "
                 f"Choose from: {_ALL_MEASURES}"
             )

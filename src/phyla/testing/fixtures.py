@@ -16,7 +16,7 @@ from typing import Any
 
 import pandas as pd
 
-# Resolve golden dir relative to this file: src/phyla/testing/ -> repo_root/tests/golden/
+# Resolve golden dir relative to this file: src/pyloseq/testing/ -> repo_root/tests/golden/
 _GOLDEN_DIR = Path(__file__).parent.parent.parent.parent / "tests" / "golden"
 
 

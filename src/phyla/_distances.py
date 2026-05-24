@@ -11,16 +11,16 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
+from pyloseq._exceptions import pyloseqValidationError
 
 if TYPE_CHECKING:
-    from phyla._phyloseq import Phyloseq
+    from pyloseq._phyloseq import Phyloseq
 
 # ---------------------------------------------------------------------------
 # Method catalogue
 # ---------------------------------------------------------------------------
 
-# Maps phyla/R method names → (scipy_pdist_metric, binarize)
+# Maps pyloseq/R method names → (scipy_pdist_metric, binarize)
 _SCIPY_METHODS: dict[str, tuple[str, bool]] = {
     "euclidean":  ("euclidean",  False),
     "manhattan":  ("cityblock",  False),
@@ -103,7 +103,7 @@ def distance(
     if m in _SCIPY_METHODS:
         return _scipy_distance(ps, m, type=type, **kwargs)
 
-    raise PhylaValidationError(
+    raise pyloseqValidationError(
         f"Unknown distance method: '{method}'. "
         f"Supported: {_ALL_METHODS}"
     )
@@ -142,7 +142,7 @@ def unifrac(
     from skbio.diversity import beta_diversity  # type: ignore[import]
 
     if ps.phy_tree is None:
-        raise PhylaValidationError("unifrac requires phy_tree")
+        raise pyloseqValidationError("unifrac requires phy_tree")
 
     tree_node = ps.phy_tree._tree
     tree_tips = set(ps.phy_tree.tip_names)
@@ -154,7 +154,7 @@ def unifrac(
     # Restrict to taxa present in the tree
     taxa_in_tree = [t for t in otu_df.columns if t in tree_tips]
     if not taxa_in_tree:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             "No taxa names match tree tip labels. "
             "Check that taxa_names and tree tip names are consistent."
         )
@@ -259,7 +259,7 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
 
     common = [t for t in species_ids if t in freq_table.columns]
     if not common:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             "No shared taxa between frequency table and species distance matrix"
         )
 
@@ -312,7 +312,7 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
     from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
 
     if ps.phy_tree is None:
-        raise PhylaValidationError("dpcoa requires phy_tree")
+        raise pyloseqValidationError("dpcoa requires phy_tree")
 
     tree_node = ps.phy_tree._tree
     dm_species = tree_node.tip_tip_distances()

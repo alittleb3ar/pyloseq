@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "phyla"
+name = "pyloseq"
 version = "0.1.0"
 description = "A native Python port of R/Bioconductor phyloseq — PyData-native microbiome analysis"
 readme = "README.md"
@@ -54,10 +54,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mikedonovan/phyla"
-Documentation = "https://mikedonovan.github.io/phyla"
-Repository = "https://github.com/mikedonovan/phyla"
-"Bug Tracker" = "https://github.com/mikedonovan/phyla/issues"
+Homepage = "https://github.com/mikedonovan/pyloseq"
+Documentation = "https://mikedonovan.github.io/pyloseq"
+Repository = "https://github.com/mikedonovan/pyloseq"
+"Bug Tracker" = "https://github.com/mikedonovan/pyloseq/issues"
 
 [tool.hatch.envs.default]
 features = ["dev"]
@@ -67,8 +67,8 @@ test = "pytest {args:tests/}"
 bench = "pytest tests/test_benchmarks.py --benchmark-only -v"
 lint = "ruff check src tests"
 fmt = "ruff format src tests"
-typecheck = "mypy src/phyla"
-doccheck = "interrogate src/phyla"
+typecheck = "mypy src/pyloseq"
+doccheck = "interrogate src/pyloseq"
 docs-serve = "mkdocs serve"
 docs-build = "mkdocs build"
 nb-test = "pytest --nbval-lax docs/notebooks/"
@@ -95,7 +95,7 @@ select = [
 ignore = ["E501"]  # line length handled by formatter
 
 [tool.ruff.lint.isort]
-known-first-party = ["phyla"]
+known-first-party = ["pyloseq"]
 
 [tool.mypy]
 strict = true
@@ -118,4 +118,4 @@ fail-under = 100
 verbose = 0
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/phyla"]
+packages = ["src/pyloseq"]

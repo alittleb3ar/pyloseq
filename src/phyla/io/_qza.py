@@ -29,10 +29,10 @@ _UNROOTED_TREE_TYPES = {"Phylogeny[Unrooted]"}
 
 
 def _read_qza_artifact(path: str | Path) -> dict[str, Any]:
-    """Extract one .qza artifact and return a dict of phyla components."""
-    from phyla._refseq import RefSeq
-    from phyla._tree import PhyTree
-    from phyla.io._biom import read_biom
+    """Extract one .qza artifact and return a dict of pyloseq components."""
+    from pyloseq._refseq import RefSeq
+    from pyloseq._tree import PhyTree
+    from pyloseq.io._biom import read_biom
 
     result: dict[str, Any] = {}
 
@@ -107,8 +107,8 @@ def _read_qza_artifact(path: str | Path) -> dict[str, Any]:
 
 def _parse_qiime2_taxonomy(path: Path) -> Any:
     """Parse a QIIME 2 taxonomy.tsv into a TaxTable."""
-    from phyla._tax_table import TaxTable
-    from phyla.io._biom import _DEFAULT_RANKS, _parse_taxonomy_entry
+    from pyloseq._tax_table import TaxTable
+    from pyloseq.io._biom import _DEFAULT_RANKS, _parse_taxonomy_entry
 
     df = pd.read_csv(path, sep="\t", index_col=0)
     df.index.name = None
@@ -144,8 +144,8 @@ def read_qza(
 
     R reference: qiime2R::qza_to_phyloseq(features, tree, taxonomy, metadata)
     """
-    from phyla._phyloseq import Phyloseq
-    from phyla._sample_data import SampleData
+    from pyloseq._phyloseq import Phyloseq
+    from pyloseq._sample_data import SampleData
 
     components: dict[str, Any] = {}
     provenance: dict[str, bytes] = {}
@@ -201,7 +201,7 @@ def write_qza(
     """
     import uuid as _uuid_mod
 
-    from phyla.io._biom import write_biom
+    from pyloseq.io._biom import write_biom
 
     artifact_uuid = str(_uuid_mod.uuid4())
     meta = {

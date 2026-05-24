@@ -1,8 +1,8 @@
 # Reproducible environment for regenerating R phyloseq golden files.
 #
 # Usage:
-#   docker build -f scripts/Dockerfile.golden -t phyla-golden .
-#   docker run --rm -v "$(pwd)/tests/golden:/repo/tests/golden" phyla-golden
+#   docker build -f scripts/Dockerfile.golden -t pyloseq-golden .
+#   docker run --rm -v "$(pwd)/tests/golden:/repo/tests/golden" pyloseq-golden
 #
 # The container writes Parquet files into tests/golden/ on the host.
 # Requires Docker with bind-mount support.

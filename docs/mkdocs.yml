@@ -1,8 +1,8 @@
-site_name: phyla
+site_name: pyloseq
 site_description: A native Python port of R/Bioconductor phyloseq
-site_url: https://mikedonovan.github.io/phyla
-repo_url: https://github.com/mikedonovan/phyla
-repo_name: mikedonovan/phyla
+site_url: https://mikedonovan.github.io/pyloseq
+repo_url: https://github.com/mikedonovan/pyloseq
+repo_name: mikedonovan/pyloseq
 
 theme:
   name: material
@@ -47,7 +47,7 @@ nav:
       - Preprocessing: notebooks/04_preprocessing.ipynb
       - AnnData interop: notebooks/05_anndata_interop.ipynb
   - API Reference:
-      - phyla: api/phyla.md
+      - pyloseq: api/pyloseq.md
   - Golden Files: golden_files.md
 
 markdown_extensions:

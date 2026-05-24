@@ -15,10 +15,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
+from pyloseq._exceptions import pyloseqValidationError
 
 if TYPE_CHECKING:
-    from phyla._phyloseq import Phyloseq
+    from pyloseq._phyloseq import Phyloseq
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ def plot_bar(
         facet_grid as pg_facet_grid,
     )
 
-    from phyla._manipulation import psmelt  # noqa: PLC0415
+    from pyloseq._manipulation import psmelt  # noqa: PLC0415
 
     long_df = psmelt(ps)
 
@@ -137,7 +137,7 @@ def plot_richness(
         theme,
     )
 
-    from phyla._diversity import estimate_richness  # noqa: PLC0415
+    from pyloseq._diversity import estimate_richness  # noqa: PLC0415
 
     rich_df = estimate_richness(ps, measures=measures)
 
@@ -261,7 +261,7 @@ def plot_ordination(
 
     elif type == "taxa":
         if ord.features is None:
-            raise PhylaValidationError(
+            raise pyloseqValidationError(
                 "Ordination result has no 'features' (taxa) scores. "
                 "Use type='samples' or re-run ordinate with a method that produces taxa scores."
             )
@@ -278,7 +278,7 @@ def plot_ordination(
         return _plot_split(ps, ord, color=color, shape=shape)
 
     else:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"Unknown plot_ordination type: '{type}'. "
             "Use: 'samples', 'taxa', 'biplot', 'split', 'scree'."
         )
@@ -332,7 +332,7 @@ def _plot_scree(ord: Any, title: str | None = None) -> Any:
     )
 
     if ord.proportion_explained is None or ord.proportion_explained.isna().all():
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             "Ordination result has no proportion_explained; scree plot unavailable."
         )
     df = pd.DataFrame({
@@ -439,8 +439,8 @@ def plot_heatmap(
         theme,
     )
 
-    from phyla._manipulation import psmelt  # noqa: PLC0415
-    from phyla._ordination import ordinate  # noqa: PLC0415
+    from pyloseq._manipulation import psmelt  # noqa: PLC0415
+    from pyloseq._ordination import ordinate  # noqa: PLC0415
 
     # Ordinate to get sample ordering
     try:
@@ -455,7 +455,7 @@ def plot_heatmap(
     if trans == "log4":
         long_df["Abundance"] = np.log(long_df["Abundance"] + 1) / np.log(4)
     elif trans is not None:
-        raise PhylaValidationError(f"Unknown trans '{trans}'. Use 'log4' or None.")
+        raise pyloseqValidationError(f"Unknown trans '{trans}'. Use 'log4' or None.")
 
     # Order samples by ordination axis
     long_df["Sample"] = pd.Categorical(long_df["Sample"], categories=sample_order, ordered=True)
@@ -494,7 +494,7 @@ def make_network(
     type:
         ``"samples"`` (default) or ``"taxa"``.
     distance:
-        Distance metric (see :func:`phyla.distance`).
+        Distance metric (see :func:`pyloseq.distance`).
     max_dist:
         Maximum distance for an edge to be drawn.
     keep_isolates:
@@ -513,7 +513,7 @@ def make_network(
             "make_network requires networkx. Install it with: pip install networkx"
         ) from e
 
-    from phyla._distances import distance as _distance  # noqa: PLC0415
+    from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
     dm = _distance(ps, distance, type=type)
     ids = list(dm.ids)

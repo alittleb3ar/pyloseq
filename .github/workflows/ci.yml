@@ -18,8 +18,8 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check src tests
       - run: ruff format --check src tests
-      - run: mypy src/phyla
-      - run: interrogate src/phyla
+      - run: mypy src/pyloseq
+      - run: interrogate src/pyloseq
 
   test:
     name: Test (Python ${{ matrix.python-version }}, NumPy ${{ matrix.numpy-spec }}, ${{ matrix.os }})

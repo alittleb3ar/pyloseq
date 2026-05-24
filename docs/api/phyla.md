@@ -1,3 +1,3 @@
 # API Reference
 
-::: phyla
+::: pyloseq

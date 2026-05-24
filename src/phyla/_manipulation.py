@@ -14,14 +14,14 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
-from phyla._otu_table import OtuTable
-from phyla._refseq import RefSeq
-from phyla._sample_data import SampleData
-from phyla._tax_table import TaxTable
+from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._otu_table import OtuTable
+from pyloseq._refseq import RefSeq
+from pyloseq._sample_data import SampleData
+from pyloseq._tax_table import TaxTable
 
 if TYPE_CHECKING:
-    from phyla._phyloseq import Phyloseq
+    from pyloseq._phyloseq import Phyloseq
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 def _ps_copy(ps: Phyloseq) -> Phyloseq:
     """Shallow-copy a Phyloseq, deep-copying each component."""
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     return _Phyloseq(
         otu=ps.otu_table.copy(),
@@ -71,7 +71,7 @@ def prune_taxa(
 
     R reference: prune_taxa(taxa, x)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     taxa_set = set(ps.taxa_names)
     keep = [n for n in names if n in taxa_set]
@@ -128,7 +128,7 @@ def prune_samples(
 
     R reference: prune_samples(samples, x)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     sample_set = set(ps.sample_names)
     keep = [n for n in names if n in sample_set]
@@ -180,7 +180,7 @@ def subset_samples(
     R reference: subset_samples(physeq, ...)
     """
     if ps.sample_data is None:
-        raise PhylaValidationError("subset_samples requires sample_data")
+        raise pyloseqValidationError("subset_samples requires sample_data")
 
     sam_df = ps.sample_data.to_frame()
 
@@ -217,7 +217,7 @@ def subset_taxa(
     R reference: subset_taxa(physeq, ...)
     """
     if ps.tax_table is None:
-        raise PhylaValidationError("subset_taxa requires tax_table")
+        raise pyloseqValidationError("subset_taxa requires tax_table")
 
     tax_df = ps.tax_table.to_frame()
 
@@ -313,7 +313,7 @@ def transform_sample_counts(
 
     R reference: transform_sample_counts(physeq, function(x) x / sum(x))
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     df = _otu_taxa_rows(ps)
     new_df = df.apply(fn, axis=0)  # apply column-wise (each column = one sample)
@@ -366,7 +366,7 @@ def rarefy_even_depth(
 
     R reference: rarefy_even_depth(physeq, sample.size, rngseed, replace, trimOTUs, verbose)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     if compat is not None and compat != "r-vegan":
         raise ValueError(f"Unknown compat mode: {compat!r}. Use 'r-vegan' or None.")
@@ -389,7 +389,7 @@ def rarefy_even_depth(
         df = df.loc[:, ~drop_mask]
 
     if df.shape[1] == 0:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"All samples have fewer than {sample_size} reads. "
             "Lower sample_size or check your data."
         )
@@ -477,7 +477,7 @@ def merge_taxa(
 
     R reference: merge_taxa(x, eqtaxa, archetype)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     df = _otu_taxa_rows(ps)
     present = [t for t in eqtaxa if t in df.index]
@@ -548,16 +548,16 @@ def tax_glom(
 
     R reference: tax_glom(physeq, taxrank, NArm, bad_empty)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     if ps.tax_table is None:
-        raise PhylaValidationError("tax_glom requires a TaxTable")
+        raise pyloseqValidationError("tax_glom requires a TaxTable")
 
     tax_df = ps.tax_table.to_frame()
     ranks = list(tax_df.columns)
 
     if taxrank not in ranks:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"Rank '{taxrank}' not found in tax_table. Available: {ranks}"
         )
 
@@ -583,7 +583,7 @@ def tax_glom(
         tax_df = tax_df[mask]
 
     if len(otu_df) == 0:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"No taxa remaining after na_rm filtering at rank '{taxrank}'."
         )
 
@@ -665,7 +665,7 @@ def tip_glom(
     from scipy.spatial.distance import squareform  # type: ignore[import]
 
     if ps.phy_tree is None:
-        raise PhylaValidationError("tip_glom requires a PhyTree")
+        raise pyloseqValidationError("tip_glom requires a PhyTree")
 
     tree_node = ps.phy_tree._tree
     dm = tree_node.tip_tip_distances()
@@ -718,7 +718,7 @@ def merge_phyloseq(*objs: Phyloseq) -> Phyloseq:
 
     R reference: merge_phyloseq(...)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     if len(objs) < 2:
         raise ValueError("merge_phyloseq requires at least 2 Phyloseq objects.")
@@ -790,17 +790,17 @@ def merge_samples(
 
     R reference: merge_samples(x, group, fun)
     """
-    from phyla._phyloseq import Phyloseq as _Phyloseq
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
     if ps.sample_data is None:
-        raise PhylaValidationError("merge_samples requires sample_data")
+        raise pyloseqValidationError("merge_samples requires sample_data")
 
     if fn is None:
         fn = np.mean
 
     sam_df = ps.sample_data.to_frame()
     if group_var not in sam_df.columns:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"Variable '{group_var}' not found in sample_data. "
             f"Available: {list(sam_df.columns)}"
         )

@@ -43,12 +43,12 @@ def read_csv(
 
     R reference: phyloseq::phyloseq(otu_table(read.csv(otu_path), taxa_are_rows), ...)
     """
-    from phyla._otu_table import OtuTable
-    from phyla._phyloseq import Phyloseq
-    from phyla._refseq import RefSeq
-    from phyla._sample_data import SampleData
-    from phyla._tax_table import TaxTable
-    from phyla._tree import PhyTree
+    from pyloseq._otu_table import OtuTable
+    from pyloseq._phyloseq import Phyloseq
+    from pyloseq._refseq import RefSeq
+    from pyloseq._sample_data import SampleData
+    from pyloseq._tax_table import TaxTable
+    from pyloseq._tree import PhyTree
 
     otu_df = pd.read_csv(str(otu_path), sep=sep, index_col=0)
     otu_df.index.name = None

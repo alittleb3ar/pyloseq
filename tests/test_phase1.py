@@ -15,10 +15,10 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays as np_arrays
 
-import phyla
-from phyla import (
+import pyloseq
+from pyloseq import (
     OtuTable,
-    PhylaValidationError,
+    pyloseqValidationError,
     Phyloseq,
     PhyTree,
     RefSeq,
@@ -164,7 +164,7 @@ class TestOtuTable:
 
     @skip_no_golden
     def test_taxa_sums_match_r_reference(self) -> None:
-        from phyla.testing import load_global_patterns_reference
+        from pyloseq.testing import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
@@ -176,7 +176,7 @@ class TestOtuTable:
 
     @skip_no_golden
     def test_sample_sums_match_r_reference(self) -> None:
-        from phyla.testing import load_global_patterns_reference
+        from pyloseq.testing import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
@@ -218,7 +218,7 @@ class TestSampleData:
 
     @skip_no_golden
     def test_enterotype_shape(self) -> None:
-        from phyla.testing import load_enterotype_reference
+        from pyloseq.testing import load_enterotype_reference
 
         ref = load_enterotype_reference()
         sd = SampleData(ref["sample_data"])
@@ -243,7 +243,7 @@ class TestTaxTable:
 
     @skip_no_golden
     def test_global_patterns_shape(self) -> None:
-        from phyla.testing import load_global_patterns_reference
+        from pyloseq.testing import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         tt = TaxTable(ref["tax_table"])
@@ -308,7 +308,7 @@ class TestPhyTree:
 
     @skip_no_golden
     def test_global_patterns_tree_ntips(self) -> None:
-        from phyla.testing import load_global_patterns_reference
+        from pyloseq.testing import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         t = PhyTree.from_newick(ref["phy_tree_newick"])
@@ -316,7 +316,7 @@ class TestPhyTree:
 
     @skip_no_golden
     def test_esophagus_tree_ntips(self) -> None:
-        from phyla.testing import load_esophagus_reference
+        from pyloseq.testing import load_esophagus_reference
 
         ref = load_esophagus_reference()
         t = PhyTree.from_newick(ref["phy_tree_newick"])
@@ -381,29 +381,29 @@ class TestPhyloseqConstructor:
             [[1, 2], [3, 4]], index=["A", "B"], columns=["S1", "S2"]
         )
         df_tax = pd.DataFrame({"Phylum": ["P1"]}, index=["A"])
-        with pytest.raises(PhylaValidationError):
+        with pytest.raises(pyloseqValidationError):
             Phyloseq(otu=OtuTable(df_otu), tax=TaxTable(df_tax), strict=True)
 
     def test_strict_mode_raises_on_sample_mismatch(self) -> None:
         df_otu = pd.DataFrame([[1, 2]], index=["OTU1"], columns=["S1", "S2"])
         df_sam = pd.DataFrame({"x": [1]}, index=["S1"])
-        with pytest.raises(PhylaValidationError):
+        with pytest.raises(pyloseqValidationError):
             Phyloseq(otu=OtuTable(df_otu), sam=SampleData(df_sam), strict=True)
 
     def test_missing_otu_table_raises(self) -> None:
-        with pytest.raises((TypeError, PhylaValidationError)):
+        with pytest.raises((TypeError, pyloseqValidationError)):
             Phyloseq(otu=None)  # type: ignore[arg-type]
 
     def test_empty_taxa_intersection_raises(self) -> None:
         df_otu = pd.DataFrame([[1]], index=["OTU_X"], columns=["S1"])
         df_tax = pd.DataFrame({"Phylum": ["P1"]}, index=["OTU_Y"])
-        with pytest.raises(PhylaValidationError, match="taxa/OTU names do not match"):
+        with pytest.raises(pyloseqValidationError, match="taxa/OTU names do not match"):
             Phyloseq(otu=OtuTable(df_otu), tax=TaxTable(df_tax))
 
     def test_empty_sample_intersection_raises(self) -> None:
         df_otu = pd.DataFrame([[1]], index=["OTU1"], columns=["S_X"])
         df_sam = pd.DataFrame({"x": [1]}, index=["S_Y"])
-        with pytest.raises(PhylaValidationError, match="sample names do not match"):
+        with pytest.raises(pyloseqValidationError, match="sample names do not match"):
             Phyloseq(otu=OtuTable(df_otu), sam=SampleData(df_sam))
 
     def test_sample_data_setter_reruns_validation(self) -> None:
@@ -414,7 +414,7 @@ class TestPhyloseqConstructor:
 
     @skip_no_golden
     def test_global_patterns_dimensions(self) -> None:
-        from phyla.testing import load_global_patterns_reference
+        from pyloseq.testing import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
@@ -429,7 +429,7 @@ class TestPhyloseqConstructor:
 
     @skip_no_golden
     def test_esophagus_dimensions(self) -> None:
-        from phyla.testing import load_esophagus_reference
+        from pyloseq.testing import load_esophagus_reference
 
         ref = load_esophagus_reference()
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
@@ -516,4 +516,4 @@ class TestAccessors:
 
     def test_public_api_exports(self) -> None:
         for name in ["Phyloseq", "OtuTable", "SampleData", "TaxTable", "PhyTree", "RefSeq"]:
-            assert hasattr(phyla, name)
+            assert hasattr(pyloseq, name)

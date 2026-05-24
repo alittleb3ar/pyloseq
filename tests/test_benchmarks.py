@@ -1,4 +1,4 @@
-"""Performance benchmarks for phyla — Ticket 6.1.
+"""Performance benchmarks for pyloseq — Ticket 6.1.
 
 Run with:
     pytest tests/test_benchmarks.py --benchmark-only -v
@@ -34,8 +34,8 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def globalpatterns():
-    from phyla import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
-    from phyla.testing.fixtures import load_global_patterns_reference
+    from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
+    from pyloseq.testing.fixtures import load_global_patterns_reference
 
     ref = load_global_patterns_reference()
     return Phyloseq(
@@ -48,8 +48,8 @@ def globalpatterns():
 
 @pytest.fixture(scope="module")
 def esophagus():
-    from phyla import OtuTable, Phyloseq, PhyTree
-    from phyla.testing.fixtures import load_esophagus_reference
+    from pyloseq import OtuTable, Phyloseq, PhyTree
+    from pyloseq.testing.fixtures import load_esophagus_reference
 
     ref = load_esophagus_reference()
     return Phyloseq(
@@ -64,8 +64,8 @@ def esophagus():
 
 def test_benchmark_constructor(benchmark):
     """Phyloseq constructor on GlobalPatterns: < 3 s."""
-    from phyla import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
-    from phyla.testing.fixtures import load_global_patterns_reference
+    from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
+    from pyloseq.testing.fixtures import load_global_patterns_reference
 
     ref = load_global_patterns_reference()
 
@@ -86,7 +86,7 @@ def test_benchmark_constructor(benchmark):
 
 def test_benchmark_tax_glom_family(benchmark, globalpatterns):
     """tax_glom at Family rank on GlobalPatterns: < 5 s."""
-    from phyla import tax_glom
+    from pyloseq import tax_glom
 
     result = benchmark.pedantic(
         tax_glom, args=(globalpatterns, "Family"), rounds=3, iterations=1
@@ -99,7 +99,7 @@ def test_benchmark_tax_glom_family(benchmark, globalpatterns):
 
 def test_benchmark_rarefy(benchmark, globalpatterns):
     """rarefy_even_depth on GlobalPatterns: < 2 s."""
-    from phyla import rarefy_even_depth
+    from pyloseq import rarefy_even_depth
 
     result = benchmark.pedantic(
         rarefy_even_depth,
@@ -130,7 +130,7 @@ def test_benchmark_bray_distance(benchmark, globalpatterns):
 
 def test_benchmark_pcoa(benchmark, globalpatterns):
     """PCoA on GlobalPatterns Bray-Curtis: < 5 s."""
-    from phyla import distance
+    from pyloseq import distance
 
     dm = distance(globalpatterns, "bray")
 
@@ -150,7 +150,7 @@ def test_benchmark_pcoa(benchmark, globalpatterns):
 @pytest.mark.skipif(not ES_PRESENT, reason="esophagus golden files not generated")
 def test_benchmark_unifrac_weighted(benchmark, esophagus):
     """Weighted UniFrac on esophagus: < 10 s."""
-    from phyla import unifrac
+    from pyloseq import unifrac
 
     result = benchmark.pedantic(
         unifrac,
@@ -167,8 +167,8 @@ def test_benchmark_unifrac_weighted(benchmark, esophagus):
 
 def test_benchmark_memory_globalpatterns():
     """GlobalPatterns resident object: < 500 MB."""
-    from phyla import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
-    from phyla.testing.fixtures import load_global_patterns_reference
+    from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
+    from pyloseq.testing.fixtures import load_global_patterns_reference
 
     ref = load_global_patterns_reference()
 

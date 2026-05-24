@@ -1,9 +1,9 @@
 from importlib.metadata import version
 
-from phyla._distances import distance, distance_method_list, unifrac
-from phyla._diversity import estimate_richness
-from phyla._exceptions import PhylaValidationError
-from phyla._manipulation import (
+from pyloseq._distances import distance, distance_method_list, unifrac
+from pyloseq._diversity import estimate_richness
+from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import (
     filter_taxa,
     kOverA,
     merge_phyloseq,
@@ -19,14 +19,14 @@ from phyla._manipulation import (
     tip_glom,
     transform_sample_counts,
 )
-from phyla._ordination import ordinate
-from phyla._otu_table import OtuTable
-from phyla._phyloseq import Phyloseq
-from phyla._refseq import RefSeq
-from phyla._sample_data import SampleData
-from phyla._tax_table import TaxTable
-from phyla._tree import PhyTree
-from phyla.io import (
+from pyloseq._ordination import ordinate
+from pyloseq._otu_table import OtuTable
+from pyloseq._phyloseq import Phyloseq
+from pyloseq._refseq import RefSeq
+from pyloseq._sample_data import SampleData
+from pyloseq._tax_table import TaxTable
+from pyloseq._tree import PhyTree
+from pyloseq.io import (
     read_biom,
     read_csv,
     read_mothur,
@@ -38,7 +38,7 @@ from phyla.io import (
     write_biom,
     write_qza,
 )
-from phyla.plotting import (
+from pyloseq.plotting import (
     make_network,
     plot_bar,
     plot_heatmap,
@@ -47,7 +47,7 @@ from phyla.plotting import (
     plot_richness,
 )
 
-__version__ = version("phyla")
+__version__ = version("pyloseq")
 
 __all__ = [
     "__version__",
@@ -58,7 +58,7 @@ __all__ = [
     "TaxTable",
     "PhyTree",
     "RefSeq",
-    "PhylaValidationError",
+    "pyloseqValidationError",
     # I/O
     "read_biom",
     "write_biom",

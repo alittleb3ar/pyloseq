@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import phyla
-from phyla import (
+import pyloseq
+from pyloseq import (
     OtuTable,
     Phyloseq,
     SampleData,
@@ -61,7 +61,7 @@ def _make_ps_with_tree() -> Phyloseq:
 
     import skbio.tree
 
-    from phyla import PhyTree
+    from pyloseq import PhyTree
 
     newick = "((OTU1:0.1,OTU2:0.2):0.1,(OTU3:0.15,OTU4:0.05):0.2);"
     tree_node = skbio.tree.TreeNode.read(
@@ -79,8 +79,8 @@ def _make_ps_with_tree() -> Phyloseq:
 
 
 def _load_esophagus() -> Phyloseq:
-    from phyla import PhyTree
-    from phyla.testing.fixtures import load_esophagus_reference
+    from pyloseq import PhyTree
+    from pyloseq.testing.fixtures import load_esophagus_reference
 
     ref = load_esophagus_reference()
     tree = PhyTree.from_newick(ref["phy_tree_newick"]) if "phy_tree_newick" in ref else None
@@ -160,12 +160,12 @@ class TestEstimateRichness:
 
     def test_bad_measure_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             estimate_richness(ps, measures=["NotAMeasure"])
 
     @pytest.mark.skipif(not RICH_PRESENT, reason="golden files not generated yet")
     def test_estimate_richness_matches_r_globalpatterns(self) -> None:
-        from phyla.testing.fixtures import load_global_patterns_reference
+        from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
         gp = Phyloseq(otu=OtuTable(ref["otu_table"], taxa_are_rows=True))
@@ -240,7 +240,7 @@ class TestDistance:
 
     def test_unknown_method_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             distance(ps, "not_a_method")
 
     def test_symmetric(self) -> None:
@@ -279,7 +279,7 @@ class TestUnifrac:
 
     def test_unifrac_requires_tree(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             unifrac(ps)
 
     def test_unifrac_symmetric(self) -> None:
@@ -390,7 +390,7 @@ class TestOrdinate:
 
     def test_unknown_method_raises(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             ordinate(ps, method="GARBAGE")
 
     def test_dca_not_implemented(self) -> None:
@@ -406,7 +406,7 @@ class TestOrdinate:
 
     def test_cca_requires_formula(self) -> None:
         ps = _make_ps()
-        with pytest.raises(phyla.PhylaValidationError):
+        with pytest.raises(pyloseq.pyloseqValidationError):
             ordinate(ps, method="CCA", formula=None)
 
     def test_rda_with_formula(self) -> None:
@@ -427,7 +427,7 @@ class TestPlotting:
         from plotnine import ggplot
 
         ps = _make_ps()
-        p = phyla.plot_bar(ps)
+        p = pyloseq.plot_bar(ps)
         assert isinstance(p, ggplot)
 
     def test_plot_bar_with_fill(self) -> None:
@@ -440,14 +440,14 @@ class TestPlotting:
             index=[f"OTU{i+1}" for i in range(6)],
         )
         ps2 = Phyloseq(otu=ps.otu_table.copy(), tax=TaxTable(tax_df))
-        p = phyla.plot_bar(ps2, fill="Phylum")
+        p = pyloseq.plot_bar(ps2, fill="Phylum")
         assert isinstance(p, ggplot)
 
     def test_plot_richness_returns_ggplot(self) -> None:
         from plotnine import ggplot
 
         ps = _make_ps()
-        p = phyla.plot_richness(ps, measures=["Observed", "Shannon"])
+        p = pyloseq.plot_richness(ps, measures=["Observed", "Shannon"])
         assert isinstance(p, ggplot)
 
     def test_plot_ordination_returns_ggplot(self) -> None:
@@ -455,7 +455,7 @@ class TestPlotting:
 
         ps = _make_ps()
         ord_result = ordinate(ps, method="PCoA", distance="bray")
-        p = phyla.plot_ordination(ps, ord_result, type="samples")
+        p = pyloseq.plot_ordination(ps, ord_result, type="samples")
         assert isinstance(p, ggplot)
 
     def test_plot_ordination_scree(self) -> None:
@@ -463,21 +463,21 @@ class TestPlotting:
 
         ps = _make_ps()
         ord_result = ordinate(ps, method="PCoA", distance="euclidean")
-        p = phyla.plot_ordination(ps, ord_result, type="scree")
+        p = pyloseq.plot_ordination(ps, ord_result, type="scree")
         assert isinstance(p, ggplot)
 
     def test_plot_heatmap_returns_ggplot(self) -> None:
         from plotnine import ggplot
 
         ps = _make_ps()
-        p = phyla.plot_heatmap(ps, method="PCoA", distance="bray")
+        p = pyloseq.plot_heatmap(ps, method="PCoA", distance="bray")
         assert isinstance(p, ggplot)
 
     def test_plot_heatmap_log4_trans(self) -> None:
         from plotnine import ggplot
 
         ps = _make_ps()
-        p = phyla.plot_heatmap(ps, trans="log4")
+        p = pyloseq.plot_heatmap(ps, trans="log4")
         assert isinstance(p, ggplot)
 
 
@@ -494,4 +494,4 @@ def test_phase4_functions_exported() -> None:
         "plot_bar", "plot_richness", "plot_ordination", "plot_heatmap",
         "make_network", "plot_network",
     ]:
-        assert hasattr(phyla, name), f"phyla.{name} not exported"
+        assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"

@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from phyla._exceptions import PhylaValidationError
+from pyloseq._exceptions import pyloseqValidationError
 
 if TYPE_CHECKING:
-    from phyla._phyloseq import Phyloseq
+    from pyloseq._phyloseq import Phyloseq
 
 _SUPPORTED_METHODS = {
     "PCoA", "MDS",       # aliases — PCoA via scikit-bio pcoa()
@@ -43,7 +43,7 @@ def ordinate(
         Ordination method: ``"PCoA"``/``"MDS"``, ``"NMDS"``, ``"CCA"``,
         ``"RDA"``, ``"CAP"``, ``"DPCoA"``, or ``"DCA"``.
     distance:
-        Distance method string (passed to :func:`phyla.distance`) or a
+        Distance method string (passed to :func:`pyloseq.distance`) or a
         pre-computed ``skbio.DistanceMatrix``.  Ignored for ``CCA`` and
         ``RDA``.
     formula:
@@ -61,7 +61,7 @@ def ordinate(
     m = method.upper()
 
     if m not in {s.upper() for s in _SUPPORTED_METHODS}:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"Unknown ordination method: '{method}'. "
             f"Supported: {sorted(_SUPPORTED_METHODS)}"
         )
@@ -84,7 +84,7 @@ def ordinate(
             "Use CCA, RDA, or PCoA instead."
         )
 
-    raise PhylaValidationError(f"Unhandled method: '{method}'")  # unreachable
+    raise pyloseqValidationError(f"Unhandled method: '{method}'")  # unreachable
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
     if isinstance(distance, DistanceMatrix):
         return distance
     if isinstance(distance, str):
-        from phyla._distances import distance as _distance  # noqa: PLC0415
+        from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
         return _distance(ps, distance)
     raise TypeError(
@@ -193,15 +193,15 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
     any non-numeric columns.
     """
     if ps.sample_data is None:
-        raise PhylaValidationError("CCA/RDA requires sample_data")
+        raise pyloseqValidationError("CCA/RDA requires sample_data")
     if formula is None:
-        raise PhylaValidationError("CCA/RDA requires a formula string")
+        raise pyloseqValidationError("CCA/RDA requires a formula string")
 
     sam_df = ps.sample_data.to_frame()
     terms = [t.strip() for t in formula.lstrip("~").split("+")]
     missing = [t for t in terms if t not in sam_df.columns]
     if missing:
-        raise PhylaValidationError(
+        raise pyloseqValidationError(
             f"Formula terms not found in sample_data: {missing}"
         )
     sub = sam_df[terms]
@@ -286,10 +286,10 @@ def _dpcoa_ordinate(ps: Phyloseq, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "DPCoA")
     """
-    from phyla._distances import _dpcoa_manual  # noqa: PLC0415
+    from pyloseq._distances import _dpcoa_manual  # noqa: PLC0415
 
     if ps.phy_tree is None:
-        raise PhylaValidationError("DPCoA ordination requires phy_tree")
+        raise pyloseqValidationError("DPCoA ordination requires phy_tree")
 
     tree_node = ps.phy_tree._tree
     dm_species = tree_node.tip_tip_distances()

@@ -43,10 +43,10 @@ def read_mothur(
 
     R reference: phyloseq::import_mothur(...)
     """
-    from phyla._otu_table import OtuTable
-    from phyla._phyloseq import Phyloseq
-    from phyla._tax_table import TaxTable
-    from phyla._tree import PhyTree
+    from pyloseq._otu_table import OtuTable
+    from pyloseq._phyloseq import Phyloseq
+    from pyloseq._tax_table import TaxTable
+    from pyloseq._tree import PhyTree
 
     otu_table: OtuTable | None = None
     tax: TaxTable | None = None
