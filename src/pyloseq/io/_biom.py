@@ -15,7 +15,7 @@ import scipy.sparse as sp
 
 _DEFAULT_RANKS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 
-TaxonomyParser = str | Callable[[Any], dict[str, str]]
+TaxonomyParser = str | Callable[[Any], dict[str, str]] | None
 
 
 def _parse_taxonomy_entry(value: Any, mode: TaxonomyParser) -> dict[str, str]:
@@ -65,7 +65,7 @@ def read_biom(
     # ---- OTU table -------------------------------------------------------
     # biom.Table.matrix_data is a csc_matrix; to_dataframe gives dense.
     # Preserve sparsity if density < 50 %.
-    mat: sp.csc_matrix = table.matrix_data  # type: ignore[assignment]
+    mat: sp.csc_matrix = table.matrix_data
     taxa_ids = list(table.ids(axis="observation"))
     sample_ids = list(table.ids(axis="sample"))
     nelem = mat.shape[0] * mat.shape[1]
@@ -104,7 +104,7 @@ def read_biom(
     # ---- HDF5 attributes (v2 only) ---------------------------------------
     extra: dict[str, Any] = {}
     try:
-        import h5py  # type: ignore[import-untyped]
+        import h5py
 
         with h5py.File(str(path), "r") as hf:
             extra = dict(hf.attrs.items())
@@ -133,7 +133,7 @@ def write_biom(
     R reference: phyloseq::export_biom(x, file)
     """
     import biom
-    import h5py  # type: ignore[import-untyped]
+    import h5py
 
     df = ps.otu_table.to_dataframe()
     if not ps.otu_table.taxa_are_rows:

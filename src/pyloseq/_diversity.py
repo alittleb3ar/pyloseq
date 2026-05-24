@@ -5,6 +5,8 @@ R reference: phyloseq::estimate_richness(physeq, split, measures)
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
 
@@ -67,12 +69,12 @@ def estimate_richness(
 
     if not split:
         pooled = otu_df.sum(axis=0)
-        rows = {str(otu_df.index[0]): _richness_single(pooled.values, measures)}
+        rows = {str(otu_df.index[0]): _richness_single(np.asarray(pooled), measures)}
     else:
-        rows = {str(sid): _richness_single(row.values, measures) for sid, row in otu_df.iterrows()}
+        rows = {str(sid): _richness_single(np.asarray(row), measures) for sid, row in otu_df.iterrows()}
 
     df = pd.DataFrame.from_dict(rows, orient="index")
-    return df[measures]
+    return cast(pd.DataFrame, df[measures])
 
 
 # ---------------------------------------------------------------------------
@@ -184,13 +186,13 @@ def _ace(nonzero: np.ndarray) -> tuple[float, float]:
 
 def _fisher_alpha(n: int, s_obs: int) -> float:
     """Fisher's log-series alpha via Brent root-finding (matches R vegan::fisher.alpha)."""
-    from scipy.optimize import brentq  # type: ignore[import]
+    from scipy.optimize import brentq
 
     if s_obs == 0 or n == 0:
         return float("nan")
 
     def eq(a: float) -> float:
-        return a * np.log(1.0 + n / a) - s_obs
+        return float(a * np.log(1.0 + n / a) - s_obs)
 
     # Find a bracket: eq(small) < 0 when alpha is tiny, grows with alpha
     try:

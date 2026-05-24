@@ -5,7 +5,7 @@ R reference: phyloseq::otu_table(object)
 
 from __future__ import annotations
 
-from typing import Union
+from typing import Any, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ class OtuTable:
 
     def __init__(
         self,
-        data: Union[np.ndarray, pd.DataFrame, sp.spmatrix, list],  # noqa: UP007
+        data: Union[np.ndarray, pd.DataFrame, sp.spmatrix, list[Any]],  # noqa: UP007
         taxa_are_rows: bool = True,
     ) -> None:
         """
@@ -49,9 +49,10 @@ class OtuTable:
             col_idx = pd.RangeIndex(data.shape[1])
             is_sparse_input = False
         elif sp.issparse(data):
-            raw = data
-            row_idx = pd.RangeIndex(data.shape[0])
-            col_idx = pd.RangeIndex(data.shape[1])
+            sparse_data = cast(sp.spmatrix, data)
+            raw = sparse_data
+            row_idx = pd.RangeIndex(sparse_data.shape[0])
+            col_idx = pd.RangeIndex(sparse_data.shape[1])
             is_sparse_input = True
         elif isinstance(data, list):
             arr = np.array(data, dtype=float)
@@ -83,7 +84,7 @@ class OtuTable:
 
         if density < 0.5 or is_sparse_input:
             csr: sp.csr_matrix = (
-                raw.tocsr() if sp.issparse(raw) else sp.csr_matrix(np.asarray(raw))  # type: ignore[arg-type]
+                raw.tocsr() if sp.issparse(raw) else sp.csr_matrix(np.asarray(raw))  # type: ignore[union-attr]
             )
             self._sparse = csr
         else:
@@ -100,9 +101,9 @@ class OtuTable:
 
     def _to_numpy(self) -> np.ndarray:
         if self._df is not None:
-            return self._df.values  # type: ignore[return-value]
+            return self._df.values
         assert self._sparse is not None
-        return self._sparse.toarray()
+        return cast(np.ndarray, self._sparse.toarray())
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return the abundance matrix as a ``pd.DataFrame`` in current orientation.
@@ -152,7 +153,7 @@ class OtuTable:
         return self._row_index if self._taxa_are_rows else self._col_index
 
     @taxa_names.setter
-    def taxa_names(self, names: pd.Index | list) -> None:
+    def taxa_names(self, names: pd.Index | list[Any]) -> None:
         new_idx = pd.Index(names)
         if self._taxa_are_rows:
             self._row_index = new_idx
@@ -172,7 +173,7 @@ class OtuTable:
         return self._col_index if self._taxa_are_rows else self._row_index
 
     @sample_names.setter
-    def sample_names(self, names: pd.Index | list) -> None:
+    def sample_names(self, names: pd.Index | list[Any]) -> None:
         new_idx = pd.Index(names)
         if self._taxa_are_rows:
             self._col_index = new_idx

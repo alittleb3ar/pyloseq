@@ -5,6 +5,8 @@ R reference: phyloseq::tax_table(object)
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 
@@ -30,7 +32,7 @@ class TaxTable:
 
         R reference: taxa_names(x)
         """
-        return self._df.index
+        return cast(pd.Index, self._df.index)
 
     @property
     def rank_names(self) -> list[str]:
@@ -45,7 +47,7 @@ class TaxTable:
 
         R reference: as(tax_table(x), "matrix") then as.data.frame()
         """
-        return self._df.copy()
+        return cast(pd.DataFrame, self._df.copy())
 
     def copy(self) -> TaxTable:
         """Return a deep copy of this TaxTable."""
@@ -63,4 +65,4 @@ class TaxTable:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TaxTable):
             return NotImplemented
-        return self._df.equals(other._df)
+        return bool(self._df.equals(other._df))

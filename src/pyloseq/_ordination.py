@@ -5,7 +5,7 @@ R reference: phyloseq::ordinate(physeq, method, distance, formula, ...)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -94,7 +94,7 @@ def ordinate(
 
 def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
     """Compute or return a distance matrix."""
-    from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+    from skbio.stats.distance import DistanceMatrix
 
     if isinstance(distance, DistanceMatrix):
         return distance
@@ -110,7 +110,7 @@ def _pcoa(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "PCoA", distance)
     """
-    from skbio.stats.ordination import pcoa  # type: ignore[import]
+    from skbio.stats.ordination import pcoa
 
     dm = _resolve_dm(ps, distance)
     result = pcoa(dm, **kwargs)
@@ -133,20 +133,20 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
 
     # Try scikit-bio nmds first
     try:
-        from skbio.stats.ordination import nmds  # type: ignore[import]
+        from skbio.stats.ordination import nmds
 
         return nmds(dm, **kwargs)
     except (ImportError, AttributeError):
         pass
 
     # Fall back: use sklearn MDS with precomputed square distance matrix
-    from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
+    from skbio.stats.ordination import OrdinationResults
 
     n_dims = kwargs.get("number_of_dimensions", 2)
     dist_sq = np.array(dm.data)  # already square — do NOT squareform
 
     try:
-        from sklearn.manifold import MDS  # type: ignore[import]
+        from sklearn.manifold import MDS
 
         mds = MDS(
             n_components=n_dims,
@@ -202,7 +202,7 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
         raise pyloseqValidationError(f"Formula terms not found in sample_data: {missing}")
     sub = sam_df[terms]
     # Dummy-encode categorical/object columns so RDA/CCA get numeric input
-    return pd.get_dummies(sub, drop_first=True).astype(float)
+    return cast(pd.DataFrame, pd.get_dummies(sub, drop_first=True).astype(float))
 
 
 def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
@@ -210,7 +210,7 @@ def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "CCA", formula=~Var)
     """
-    from skbio.stats.ordination import cca  # type: ignore[import]
+    from skbio.stats.ordination import cca
 
     x_df = _parse_formula(ps, formula)
 
@@ -228,7 +228,7 @@ def _rda(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "RDA", formula=~Var)
     """
-    from skbio.stats.ordination import rda  # type: ignore[import]
+    from skbio.stats.ordination import rda
 
     x_df = _parse_formula(ps, formula)
 
@@ -258,7 +258,7 @@ def _cap(
 
     R reference: ordinate(physeq, "CAP", distance, formula)
     """
-    from skbio.stats.ordination import rda  # type: ignore[import]
+    from skbio.stats.ordination import rda
 
     dm = _resolve_dm(ps, distance)
     x_df = _parse_formula(ps, formula)

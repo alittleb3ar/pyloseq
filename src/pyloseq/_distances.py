@@ -132,7 +132,7 @@ def unifrac(
 
     R reference: UniFrac(physeq, weighted, normalized, parallel, fast)
     """
-    from skbio.diversity import beta_diversity  # type: ignore[import]
+    from skbio.diversity import beta_diversity
 
     if ps.phy_tree is None:
         raise pyloseqValidationError("unifrac requires phy_tree")
@@ -182,8 +182,8 @@ def _scipy_distance(
     **kwargs: Any,
 ) -> Any:
     """Compute pairwise distance matrix via scipy.spatial.distance.pdist."""
-    from scipy.spatial.distance import pdist, squareform  # type: ignore[import]
-    from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+    from scipy.spatial.distance import pdist, squareform
+    from skbio.stats.distance import DistanceMatrix
 
     scipy_metric, binarize = _SCIPY_METHODS[method]
 
@@ -211,8 +211,8 @@ def _scipy_distance(
 
 def _jsd_distance(ps: Phyloseq, type: str = "samples") -> Any:
     """Pairwise Jensen-Shannon divergence."""
-    from scipy.spatial.distance import jensenshannon, pdist, squareform  # type: ignore[import]
-    from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+    from scipy.spatial.distance import jensenshannon, pdist, squareform
+    from skbio.stats.distance import DistanceMatrix
 
     otu_df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
@@ -245,7 +245,7 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
     scikit-bio 0.6+ removed the standalone dpcoa() function, so we implement
     the double-centering + weighted projection algorithm directly.
     """
-    from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
+    from skbio.stats.ordination import OrdinationResults
 
     species_ids = list(dm_species.ids)
     D = np.array(dm_species.data)
@@ -302,7 +302,7 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
 
     R reference: distance(physeq, "dpcoa")
     """
-    from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+    from skbio.stats.distance import DistanceMatrix
 
     if ps.phy_tree is None:
         raise pyloseqValidationError("dpcoa requires phy_tree")

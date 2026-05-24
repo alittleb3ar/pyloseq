@@ -10,7 +10,7 @@ R reference: phyloseq::import_mothur(mothur_list_file, mothur_group_file,
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -126,7 +126,7 @@ def _read_shared(path: Path, cutoff: str | None) -> pd.DataFrame:
     df = df.drop(columns=["label", "numOtus"], errors="ignore")
     df = df.set_index("Group")
     df.index.name = None
-    return df.astype(float)
+    return cast(pd.DataFrame, df.astype(float))
 
 
 def _list_group_to_otu(list_path: Path, group_path: Path, cutoff: str | None) -> pd.DataFrame:
@@ -155,7 +155,7 @@ def _list_group_to_otu(list_path: Path, group_path: Path, cutoff: str | None) ->
             if seq in seq_to_sample:
                 counts[seq_to_sample[seq]][otu_name] += 1
 
-    return pd.DataFrame.from_dict(counts, orient="index")[otu_names]
+    return cast(pd.DataFrame, pd.DataFrame.from_dict(counts, orient="index")[otu_names])
 
 
 def _read_constaxonomy(path: Path) -> pd.DataFrame:
@@ -180,4 +180,4 @@ def _read_constaxonomy(path: Path) -> pd.DataFrame:
         parts += [""] * max(0, len(ranks) - len(parts))
         parsed[str(otu_id)] = parts[: len(ranks)]
 
-    return pd.DataFrame.from_dict(parsed, orient="index", columns=ranks)
+    return cast(pd.DataFrame, pd.DataFrame.from_dict(parsed, orient="index", columns=ranks))

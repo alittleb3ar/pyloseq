@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -396,7 +396,7 @@ def rarefy_even_depth(
 
     rarefied_cols: dict[str, np.ndarray] = {}
     for col in df.columns:
-        counts = df[col].values.astype(int)
+        counts = np.asarray(df[col], dtype=int)
         total = int(counts.sum())
         if replace:
             prob = counts / total
@@ -599,7 +599,7 @@ def tax_glom(
     for key, group_indices in group_key_ser.groupby(group_key_ser):
         group_taxa = list(group_indices.index)
         archetype = str(taxa_sum.loc[group_taxa].idxmax())
-        archetype_for_key[key] = archetype  # type: ignore[index]
+        archetype_for_key[key] = archetype
         new_rows[archetype] = otu_df.loc[group_taxa].sum(axis=0)
 
     archetypes = list(new_rows.keys())
@@ -655,8 +655,8 @@ def tip_glom(
 
     R reference: tip_glom(physeq, h, hcfun)
     """
-    from scipy.cluster.hierarchy import fcluster, linkage  # type: ignore[import]
-    from scipy.spatial.distance import squareform  # type: ignore[import]
+    from scipy.cluster.hierarchy import fcluster, linkage
+    from scipy.spatial.distance import squareform
 
     if ps.phy_tree is None:
         raise pyloseqValidationError("tip_glom requires a PhyTree")
@@ -866,4 +866,4 @@ def psmelt(ps: Phyloseq) -> pd.DataFrame:
         tax_df = ps.tax_table.to_frame()
         long = long.merge(tax_df, left_on="OTU", right_index=True, how="left")
 
-    return long.reset_index(drop=True)
+    return cast(pd.DataFrame, long.reset_index(drop=True))

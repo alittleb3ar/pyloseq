@@ -28,7 +28,7 @@ class RefSeq:
         R reference: readDNAStringSet() then RefSeq(x)
         """
         seqs: dict[str, skbio.DNA] = {}
-        for seq in skbio.io.read(str(path), format="fasta", constructor=skbio.DNA):  # type: ignore[attr-defined]
+        for seq in skbio.io.read(str(path), format="fasta", constructor=skbio.DNA):
             seqs[str(seq.metadata["id"])] = seq
         return cls(seqs)
 
@@ -39,7 +39,7 @@ class RefSeq:
         """
         with open(path, "w") as fh:
             for seq in self._seqs.values():
-                skbio.io.write(seq, format="fasta", into=fh)  # type: ignore[attr-defined]
+                skbio.io.write(seq, format="fasta", into=fh)
 
     @property
     def names(self) -> list[str]:

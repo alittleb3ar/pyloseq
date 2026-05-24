@@ -299,7 +299,7 @@ class Phyloseq:
             phyloseq. :meth:`from_anndata` handles this automatically.
         """
         try:
-            import anndata  # type: ignore[import]
+            import anndata
         except ImportError as exc:
             raise ImportError(
                 "anndata is required for to_anndata(). Install it with: pip install anndata"
@@ -364,7 +364,7 @@ class Phyloseq:
 
         refseq: RefSeq | None = None
         if "refseq" in ad.uns and ad.uns["refseq"]:
-            import skbio  # type: ignore[import]
+            import skbio
 
             refseq = RefSeq({k: skbio.DNA(v) for k, v in ad.uns["refseq"].items()})
 

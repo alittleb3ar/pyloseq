@@ -57,7 +57,7 @@ def plot_bar(
 
     R reference: plot_bar(physeq, x, y, fill, facet_grid, title)
     """
-    from plotnine import (  # type: ignore[import]  # type: ignore[import]
+    from plotnine import (
         aes,
         element_text,
         geom_bar,
@@ -124,7 +124,7 @@ def plot_richness(
 
     R reference: plot_richness(physeq, x, color, measures, title)
     """
-    from plotnine import (  # type: ignore[import]
+    from plotnine import (
         aes,
         element_text,
         facet_wrap,
@@ -236,7 +236,7 @@ def plot_ordination(
 
     R reference: plot_ordination(physeq, ordination, type, color, shape, label, title)
     """
-    from plotnine import (  # type: ignore[import]
+    from plotnine import (
         aes,
         geom_point,
         geom_text,
@@ -333,7 +333,7 @@ def plot_ordination(
 
 def _plot_scree(ord: Any, title: str | None = None) -> Any:
     """Scree plot of eigenvalues / proportion explained."""
-    from plotnine import (  # type: ignore[import]
+    from plotnine import (
         aes,
         geom_line,
         geom_point,
@@ -372,7 +372,7 @@ def _plot_split(
     shape: str | None = None,
 ) -> Any:
     """Split biplot: samples and taxa in side-by-side facets."""
-    from plotnine import aes, facet_wrap, geom_point, ggplot  # type: ignore[import]
+    from plotnine import aes, facet_wrap, geom_point, ggplot
 
     frames = []
     sam_df = pd.DataFrame(
@@ -439,7 +439,7 @@ def plot_heatmap(
 
     R reference: plot_heatmap(physeq, method, distance, trans, low, high, title)
     """
-    from plotnine import (  # type: ignore[import]
+    from plotnine import (
         aes,
         element_text,
         geom_tile,
@@ -517,7 +517,7 @@ def make_network(
     R reference: make_network(physeq, type, distance, max.dist, keep.isolates)
     """
     try:
-        import networkx as nx  # type: ignore[import]
+        import networkx as nx
     except ImportError as e:
         raise ImportError(
             "make_network requires networkx. Install it with: pip install networkx"
@@ -583,13 +583,13 @@ def plot_network(
     R reference: plot_network(ig, physeq, color, layout, title)
     """
     try:
-        import networkx as nx  # type: ignore[import]
+        import networkx as nx
     except ImportError as e:
         raise ImportError(
             "plot_network requires networkx. Install it with: pip install networkx"
         ) from e
 
-    from plotnine import aes, geom_point, geom_segment, ggplot, labs  # type: ignore[import]
+    from plotnine import aes, geom_point, geom_segment, ggplot, labs
 
     layout_fn = getattr(nx, f"{layout}_layout", nx.spring_layout)
     pos = layout_fn(g)
