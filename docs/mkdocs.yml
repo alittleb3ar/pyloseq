@@ -1,0 +1,61 @@
+site_name: phyla
+site_description: A native Python port of R/Bioconductor phyloseq
+site_url: https://mikedonovan.github.io/phyla
+repo_url: https://github.com/mikedonovan/phyla
+repo_name: mikedonovan/phyla
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      accent: green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Migration Guide: migration.md
+  - Tutorials:
+      - Importing data: notebooks/01_importing_data.ipynb
+      - Distances & ordination: notebooks/02_distances_and_ordination.ipynb
+      - Alpha diversity: notebooks/03_alpha_diversity.ipynb
+      - Preprocessing: notebooks/04_preprocessing.ipynb
+      - AnnData interop: notebooks/05_anndata_interop.ipynb
+  - API Reference:
+      - phyla: api/phyla.md
+  - Golden Files: golden_files.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
