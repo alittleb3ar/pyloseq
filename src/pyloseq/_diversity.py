@@ -71,7 +71,9 @@ def estimate_richness(
         pooled = otu_df.sum(axis=0)
         rows = {str(otu_df.index[0]): _richness_single(np.asarray(pooled), measures)}
     else:
-        rows = {str(sid): _richness_single(np.asarray(row), measures) for sid, row in otu_df.iterrows()}
+        rows = {
+            str(sid): _richness_single(np.asarray(row), measures) for sid, row in otu_df.iterrows()
+        }
 
     df = pd.DataFrame.from_dict(rows, orient="index")
     return cast(pd.DataFrame, df[measures])
