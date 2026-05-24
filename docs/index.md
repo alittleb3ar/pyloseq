@@ -1,6 +1,6 @@
 # pyloseq
 
-**pyloseq** is a native Python port of R/Bioconductor [phyloseq](https://joey711.github.io/phyloseq/), built on the PyData stack (pandas, NumPy, scikit-bio, plotnine). It provides QIIME 2 `.qza` support out of the box — something R phyloseq lacks — and is designed for users migrating 16S/ITS microbiome workflows from R to Python.
+**pyloseq** is a native Python port of R/Bioconductor [phyloseq](https://joey711.github.io/phyloseq/), built on the PyData stack (pandas, NumPy, scikit-bio, plotnine). It provides QIIME 2 `.qza` support out of the box and is designed for users migrating 16S/ITS microbiome workflows from R to Python.
 
 ## Quick start
 
