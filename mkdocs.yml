@@ -1,4 +1,5 @@
 site_name: pyloseq
+docs_dir: docs
 site_description: A native Python port of R/Bioconductor phyloseq
 site_url: https://mikedonovan.github.io/pyloseq
 repo_url: https://github.com/mikedonovan/pyloseq
@@ -28,6 +29,9 @@ theme:
 
 plugins:
   - search
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
   - mkdocstrings:
       handlers:
         python:
@@ -47,7 +51,14 @@ nav:
       - Preprocessing: notebooks/04_preprocessing.ipynb
       - AnnData interop: notebooks/05_anndata_interop.ipynb
   - API Reference:
-      - pyloseq: api/pyloseq.md
+      - Overview: api/pyloseq.md
+      - Core containers: api/core.md
+      - I/O: api/io.md
+      - Manipulation: api/manipulation.md
+      - Analysis: api/analysis.md
+      - Plotting: api/plotting.md
+      - Exceptions: api/exceptions.md
+      - Testing: api/testing.md
   - Golden Files: golden_files.md
 
 markdown_extensions:

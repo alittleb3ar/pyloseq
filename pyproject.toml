@@ -44,6 +44,7 @@ dev = [
     "ruff>=0.4",
     "pre-commit>=3",
     "mkdocs-material>=9",
+    "mkdocs-jupyter>=0.24",
     "mkdocstrings[python]>=0.25",
     "pandas-stubs",
     "types-PyYAML",
