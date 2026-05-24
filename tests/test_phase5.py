@@ -27,8 +27,13 @@ ES_PRESENT = (GOLDEN_DIR / "esophagus" / "otu_table.parquet").exists()
 _NWK = "((OTU1:0.2,OTU2:0.3):0.5,OTU3:0.7);"
 
 
-def _make_ps(*, with_sam: bool = True, with_tax: bool = True,
-             with_tree: bool = False, with_refseq: bool = False) -> Phyloseq:
+def _make_ps(
+    *,
+    with_sam: bool = True,
+    with_tax: bool = True,
+    with_tree: bool = False,
+    with_refseq: bool = False,
+) -> Phyloseq:
     otu_data = pd.DataFrame(
         {"S1": [10, 5, 0], "S2": [3, 12, 7], "S3": [0, 1, 20]},
         index=["OTU1", "OTU2", "OTU3"],
@@ -37,29 +42,38 @@ def _make_ps(*, with_sam: bool = True, with_tax: bool = True,
 
     sam = None
     if with_sam:
-        sam = SampleData(pd.DataFrame(
-            {"Group": ["A", "A", "B"], "Depth": [13, 22, 27]},
-            index=["S1", "S2", "S3"],
-        ))
+        sam = SampleData(
+            pd.DataFrame(
+                {"Group": ["A", "A", "B"], "Depth": [13, 22, 27]},
+                index=["S1", "S2", "S3"],
+            )
+        )
 
     tax = None
     if with_tax:
-        tax = TaxTable(pd.DataFrame(
-            {"Phylum": ["Firmicutes", "Bacteroidetes", "Proteobacteria"],
-             "Genus": ["Lacto", "Bacter", "Pseudo"]},
-            index=["OTU1", "OTU2", "OTU3"],
-        ))
+        tax = TaxTable(
+            pd.DataFrame(
+                {
+                    "Phylum": ["Firmicutes", "Bacteroidetes", "Proteobacteria"],
+                    "Genus": ["Lacto", "Bacter", "Pseudo"],
+                },
+                index=["OTU1", "OTU2", "OTU3"],
+            )
+        )
 
     tree = PhyTree.from_newick(_NWK) if with_tree else None
 
     refseq = None
     if with_refseq:
         import skbio  # type: ignore[import]
-        refseq = RefSeq({
-            "OTU1": skbio.DNA("ACGT"),
-            "OTU2": skbio.DNA("TTGC"),
-            "OTU3": skbio.DNA("GGCA"),
-        })
+
+        refseq = RefSeq(
+            {
+                "OTU1": skbio.DNA("ACGT"),
+                "OTU2": skbio.DNA("TTGC"),
+                "OTU3": skbio.DNA("GGCA"),
+            }
+        )
 
     return Phyloseq(otu=otu, sam=sam, tax=tax, tree=tree, refseq=refseq)
 
@@ -151,7 +165,9 @@ class TestFromAnnData:
         if not ps2.otu_table.taxa_are_rows:
             rt = rt.T
         pd.testing.assert_frame_equal(
-            orig.reindex(sorted(orig.index), axis=0).reindex(sorted(orig.columns), axis=1).astype(float),
+            orig.reindex(sorted(orig.index), axis=0)
+            .reindex(sorted(orig.columns), axis=1)
+            .astype(float),
             rt.reindex(sorted(rt.index), axis=0).reindex(sorted(rt.columns), axis=1).astype(float),
         )
 
@@ -196,8 +212,10 @@ class TestFromAnnData:
     @pytest.mark.skipif(not GP_PRESENT, reason="golden files not generated yet")
     def test_round_trip_globalpatterns(self) -> None:
         from pyloseq.testing.fixtures import load_global_patterns_reference
+
         ref = load_global_patterns_reference()
         from pyloseq import SampleData, TaxTable
+
         ps = Phyloseq(
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
             sam=SampleData(ref["sample_data"]),
@@ -220,6 +238,7 @@ class TestFromAnnData:
 class TestPsDistanceMethod:
     def test_returns_distance_matrix(self) -> None:
         from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+
         ps = _make_ps()
         dm = ps.distance("bray")
         assert isinstance(dm, DistanceMatrix)
@@ -242,6 +261,7 @@ class TestPsDistanceMethod:
 
     def test_plugs_into_permanova(self) -> None:
         from skbio.stats.distance import permanova  # type: ignore[import]
+
         ps = _make_ps(with_sam=True)
         dm = ps.distance("bray")
         grouping = ps.sample_data.to_frame()["Group"]  # type: ignore[union-attr]
@@ -250,12 +270,14 @@ class TestPsDistanceMethod:
 
     def test_unifrac_requires_tree(self) -> None:
         from pyloseq._exceptions import pyloseqValidationError
+
         ps = _make_ps(with_tree=False)
         with pytest.raises(pyloseqValidationError, match="phy_tree"):
             ps.distance("unifrac")
 
     def test_unifrac_with_tree(self) -> None:
         from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+
         ps = _make_ps(with_tree=True)
         dm = ps.distance("unifrac")
         assert isinstance(dm, DistanceMatrix)
@@ -264,6 +286,7 @@ class TestPsDistanceMethod:
 class TestPsOrdinateMethod:
     def test_returns_ordination_results(self) -> None:
         from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
+
         ps = _make_ps()
         result = ps.ordinate("PCoA", distance="bray")
         assert isinstance(result, OrdinationResults)
@@ -275,12 +298,14 @@ class TestPsOrdinateMethod:
 
     def test_rda_with_formula(self) -> None:
         from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
+
         ps = _make_ps(with_sam=True)
         result = ps.ordinate("RDA", formula="~Group")
         assert isinstance(result, OrdinationResults)
 
     def test_unknown_method_raises(self) -> None:
         from pyloseq._exceptions import pyloseqValidationError
+
         ps = _make_ps()
         with pytest.raises(pyloseqValidationError, match="Unknown ordination method"):
             ps.ordinate("UMAP")
@@ -290,6 +315,7 @@ class TestPsOrdinateMethod:
         from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
 
         from pyloseq.testing.fixtures import load_esophagus_reference
+
         ref = load_esophagus_reference()
         ps = Phyloseq(
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
@@ -308,6 +334,7 @@ class TestPsOrdinateMethod:
 def test_permanova_one_liner() -> None:
     """permanova(ps.distance("bray"), ps.sample_data["Group"]) works without conversion."""
     from skbio.stats.distance import permanova  # type: ignore[import]
+
     ps = _make_ps(with_sam=True)
     result = permanova(ps.distance("bray"), ps.sample_data.to_frame()["Group"])  # type: ignore[union-attr]
     assert "test statistic" in result.index

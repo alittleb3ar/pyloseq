@@ -62,8 +62,8 @@ def _make_ps(
     if rng is None:
         rng = np.random.default_rng(0)
     counts = rng.integers(0, 50, size=(ntaxa, nsamples)).astype(float)
-    taxa = [f"OTU{i+1}" for i in range(ntaxa)]
-    samples = [f"S{i+1}" for i in range(nsamples)]
+    taxa = [f"OTU{i + 1}" for i in range(ntaxa)]
+    samples = [f"S{i + 1}" for i in range(nsamples)]
     df = pd.DataFrame(counts, index=taxa, columns=samples)
     otu = OtuTable(df, taxa_are_rows=True)
 
@@ -80,8 +80,14 @@ def _make_ps(
 
     tax = None
     if with_tax:
-        pyloseq_vals = ["Firmicutes", "Firmicutes", "Bacteroidetes", "Proteobacteria",
-                      "Proteobacteria", "Chlamydiae"][:ntaxa]
+        pyloseq_vals = [
+            "Firmicutes",
+            "Firmicutes",
+            "Bacteroidetes",
+            "Proteobacteria",
+            "Proteobacteria",
+            "Chlamydiae",
+        ][:ntaxa]
         genus_vals = ["Genus_A", "Genus_A", "Genus_B", "Genus_C", "Genus_D", "Genus_E"][:ntaxa]
         tax_df = pd.DataFrame(
             {"Phylum": pyloseq_vals, "Genus": genus_vals},
@@ -222,9 +228,7 @@ class TestSubset:
         assert gp_soil.nsamples == 3
 
         # Compare against golden
-        golden_otu = pd.read_parquet(
-            GP_GOLDEN / "subset_samples_soil" / "otu_table.parquet"
-        )
+        golden_otu = pd.read_parquet(GP_GOLDEN / "subset_samples_soil" / "otu_table.parquet")
         if "__index__" in golden_otu.columns:
             golden_otu = golden_otu.set_index("__index__")
             golden_otu.index.name = None
@@ -248,9 +252,7 @@ class TestSubset:
         )
         gp_chlam = subset_taxa(gp, 'Phylum == "Chlamydiae"')
 
-        golden_otu = pd.read_parquet(
-            GP_GOLDEN / "subset_taxa_chlamydiae" / "otu_table.parquet"
-        )
+        golden_otu = pd.read_parquet(GP_GOLDEN / "subset_taxa_chlamydiae" / "otu_table.parquet")
         if "__index__" in golden_otu.columns:
             golden_otu = golden_otu.set_index("__index__")
             golden_otu.index.name = None
@@ -302,9 +304,7 @@ class TestFilterTaxa:
         )
         et2 = filter_taxa(et, kOverA(5, 2e-5), prune=True)
 
-        golden_otu = pd.read_parquet(
-            ET_GOLDEN / "filter_taxa_kOverA_5_2e-5" / "otu_table.parquet"
-        )
+        golden_otu = pd.read_parquet(ET_GOLDEN / "filter_taxa_kOverA_5_2e-5" / "otu_table.parquet")
         if "__index__" in golden_otu.columns:
             golden_otu = golden_otu.set_index("__index__")
             golden_otu.index.name = None
@@ -472,9 +472,7 @@ class TestTaxGlom:
         )
         gp_fam = tax_glom(gp, "Family")
 
-        golden_ts = pd.read_parquet(
-            GP_GOLDEN / "tax_glom_Family" / "taxa_sums.parquet"
-        )
+        golden_ts = pd.read_parquet(GP_GOLDEN / "tax_glom_Family" / "taxa_sums.parquet")
         if "__index__" in golden_ts.columns:
             golden_ts = golden_ts.set_index("__index__")
             golden_ts.index.name = None
@@ -578,9 +576,7 @@ class TestMergePhyloseq:
         merged = merge_phyloseq(ps1, ps2)
         assert merged.ntaxa == 2
         assert merged.nsamples == 1
-        np.testing.assert_allclose(
-            merged.otu_table.to_dataframe()["S1"].values, [13.0, 12.0]
-        )
+        np.testing.assert_allclose(merged.otu_table.to_dataframe()["S1"].values, [13.0, 12.0])
 
     def test_merge_union_taxa(self) -> None:
         df1 = pd.DataFrame({"S1": [10.0]}, index=["OTU1"])
@@ -639,9 +635,7 @@ class TestMergeSamples:
         )
         gp2 = merge_samples(gp, "SampleType")
 
-        golden_ss = pd.read_parquet(
-            GP_GOLDEN / "merge_samples_SampleType" / "sample_sums.parquet"
-        )
+        golden_ss = pd.read_parquet(GP_GOLDEN / "merge_samples_SampleType" / "sample_sums.parquet")
         if "__index__" in golden_ss.columns:
             golden_ss = golden_ss.set_index("__index__")
             golden_ss.index.name = None
@@ -712,13 +706,19 @@ class TestPsmelt:
 
 def test_manipulation_functions_exported() -> None:
     for name in [
-        "subset_samples", "subset_taxa",
-        "prune_samples", "prune_taxa",
-        "filter_taxa", "kOverA",
+        "subset_samples",
+        "subset_taxa",
+        "prune_samples",
+        "prune_taxa",
+        "filter_taxa",
+        "kOverA",
         "transform_sample_counts",
         "rarefy_even_depth",
-        "tax_glom", "tip_glom",
-        "merge_phyloseq", "merge_samples", "merge_taxa",
+        "tax_glom",
+        "tip_glom",
+        "merge_phyloseq",
+        "merge_samples",
+        "merge_taxa",
         "psmelt",
     ]:
         assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"

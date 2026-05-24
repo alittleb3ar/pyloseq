@@ -302,8 +302,7 @@ class Phyloseq:
             import anndata  # type: ignore[import]
         except ImportError as exc:
             raise ImportError(
-                "anndata is required for to_anndata(). "
-                "Install it with: pip install anndata"
+                "anndata is required for to_anndata(). Install it with: pip install anndata"
             ) from exc
 
         # X: samples × taxa (AnnData convention)
@@ -366,6 +365,7 @@ class Phyloseq:
         refseq: RefSeq | None = None
         if "refseq" in ad.uns and ad.uns["refseq"]:
             import skbio  # type: ignore[import]
+
             refseq = RefSeq({k: skbio.DNA(v) for k, v in ad.uns["refseq"].items()})
 
         return cls(otu=otu, sam=sam, tax=tax, tree=tree, refseq=refseq)
@@ -390,6 +390,7 @@ class Phyloseq:
 # ------------------------------------------------------------------
 # Validator suite (Ticket 1.5)
 # ------------------------------------------------------------------
+
 
 def _validate(ps: Phyloseq, strict: bool) -> None:
     """Run the full component-consistency validator suite.
@@ -423,9 +424,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
         taxa_intersection = taxa_intersection & s
 
     if len(taxa_intersection) == 0 and len(otu_taxa) > 0 and len(components_taxa) > 1:
-        raise pyloseqValidationError(
-            "Component taxa/OTU names do not match. Try taxa_names()"
-        )
+        raise pyloseqValidationError("Component taxa/OTU names do not match. Try taxa_names()")
 
     # Rule 3 — sample-name intersection between OtuTable and SampleData
     if ps._sam is not None:
@@ -433,9 +432,7 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
         sam_samples = set(ps._sam.names)
         sample_intersection = otu_samples & sam_samples
         if len(sample_intersection) == 0:
-            raise pyloseqValidationError(
-                "Component sample names do not match. Try sample_names()"
-            )
+            raise pyloseqValidationError("Component sample names do not match. Try sample_names()")
 
     # Rules 4 & 5 — prune to intersection (or raise in strict mode)
     if len(taxa_intersection) < len(otu_taxa):
@@ -489,9 +486,8 @@ def _prune_to_taxa(ps: Phyloseq, keep: list[str]) -> None:
     # RefSeq
     if ps._refseq is not None:
         import skbio
-        new_seqs: dict[str, skbio.DNA] = {
-            k: ps._refseq[k] for k in keep if k in ps._refseq.names
-        }
+
+        new_seqs: dict[str, skbio.DNA] = {k: ps._refseq[k] for k in keep if k in ps._refseq.names}
         ps._refseq = RefSeq(new_seqs)
 
 

@@ -55,7 +55,9 @@ def read_mothur(
     # ---- OTU table from .shared -----------------------------------------
     if shared is not None:
         otu_df = _read_shared(Path(shared), cutoff=cutoff)
-        otu_table = OtuTable(otu_df.astype(float), taxa_are_rows=False)  # samples as rows in .shared
+        otu_table = OtuTable(
+            otu_df.astype(float), taxa_are_rows=False
+        )  # samples as rows in .shared
 
     # ---- OTU table from .list + .group ----------------------------------
     elif list_file is not None and group is not None:
@@ -145,7 +147,7 @@ def _list_group_to_otu(list_path: Path, group_path: Path, cutoff: str | None) ->
         else:
             raise ValueError(f"Cutoff {cutoff!r} not found in {list_path}")
 
-    otu_names = [f"Otu{i+1:03d}" for i in range(len(otu_cols))]
+    otu_names = [f"Otu{i + 1:03d}" for i in range(len(otu_cols))]
     counts: dict[str, dict[str, int]] = {s: dict.fromkeys(otu_names, 0) for s in samples}
     for otu_name, seq_csv in zip(otu_names, otu_cols, strict=False):
         for seq in seq_csv.split(","):

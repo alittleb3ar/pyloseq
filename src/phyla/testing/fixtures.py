@@ -55,10 +55,10 @@ def _load_dataset(name: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
 
     for key, loader in [
-        ("otu_table",   _load_parquet_as_frame),
+        ("otu_table", _load_parquet_as_frame),
         ("sample_data", _load_parquet_as_frame),
-        ("tax_table",   _load_parquet_as_frame),
-        ("taxa_sums",   _load_parquet_as_series),
+        ("tax_table", _load_parquet_as_frame),
+        ("taxa_sums", _load_parquet_as_series),
         ("sample_sums", _load_parquet_as_series),
     ]:
         p = base / f"{key}.parquet"
@@ -143,9 +143,9 @@ def load_golden(dataset: str, function: str, **params: Any) -> Any:
     if not params:
         filename = "default.parquet"
     else:
-        filename = hashlib.md5(
-            json.dumps(params, sort_keys=True).encode()
-        ).hexdigest()[:8] + ".parquet"
+        filename = (
+            hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()[:8] + ".parquet"
+        )
     path = _GOLDEN_DIR / dataset / function / filename
     if not path.exists():
         raise FileNotFoundError(
@@ -160,8 +160,6 @@ def golden_provenance() -> dict[str, str]:
     _require_golden()
     prov_path = _GOLDEN_DIR / "PROVENANCE.json"
     if not prov_path.exists():
-        raise FileNotFoundError(
-            f"PROVENANCE.json not found at {prov_path}. Run generate_golden.R."
-        )
+        raise FileNotFoundError(f"PROVENANCE.json not found at {prov_path}. Run generate_golden.R.")
     with prov_path.open() as f:
         return json.load(f)  # type: ignore[no-any-return]

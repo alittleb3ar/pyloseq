@@ -21,6 +21,7 @@ from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
 # Shared fixture factory
 # ===========================================================================
 
+
 def _make_ps(
     n_taxa: int = 5,
     n_samples: int = 3,
@@ -29,28 +30,33 @@ def _make_ps(
     with_tree: bool = False,
 ) -> Phyloseq:
     rng = np.random.default_rng(42)
-    taxa = [f"OTU{i+1}" for i in range(n_taxa)]
-    samples = [f"S{j+1}" for j in range(n_samples)]
+    taxa = [f"OTU{i + 1}" for i in range(n_taxa)]
+    samples = [f"S{j + 1}" for j in range(n_samples)]
 
     df = pd.DataFrame(
         rng.integers(0, 200, size=(n_taxa, n_samples)).astype(float),
-        index=taxa, columns=samples,
+        index=taxa,
+        columns=samples,
     )
     otu = OtuTable(df)
 
     sam = None
     if with_sam:
-        sam = SampleData(pd.DataFrame(
-            {"group": ["A", "B", "A"][:n_samples], "depth": [1000, 2000, 1500][:n_samples]},
-            index=samples,
-        ))
+        sam = SampleData(
+            pd.DataFrame(
+                {"group": ["A", "B", "A"][:n_samples], "depth": [1000, 2000, 1500][:n_samples]},
+                index=samples,
+            )
+        )
 
     tax = None
     if with_tax:
-        tax = TaxTable(pd.DataFrame(
-            {"Kingdom": ["Bacteria"] * n_taxa, "Phylum": [f"Phylum{i}" for i in range(n_taxa)]},
-            index=taxa,
-        ))
+        tax = TaxTable(
+            pd.DataFrame(
+                {"Kingdom": ["Bacteria"] * n_taxa, "Phylum": [f"Phylum{i}" for i in range(n_taxa)]},
+                index=taxa,
+            )
+        )
 
     tree = None
     if with_tree:
@@ -63,6 +69,7 @@ def _make_ps(
 # ===========================================================================
 # Ticket 2.1 — BIOM v1 (JSON)
 # ===========================================================================
+
 
 class TestBiomV1:
     def test_write_read_round_trip(self, tmp_path: Path) -> None:
@@ -111,6 +118,7 @@ class TestBiomV1:
 # ===========================================================================
 # Ticket 2.2 — BIOM v2 (HDF5)
 # ===========================================================================
+
 
 class TestBiomV2:
     def test_write_read_round_trip(self, tmp_path: Path) -> None:
@@ -170,6 +178,7 @@ class TestBiomV2:
 # Ticket 2.3 — QIIME 2 .qza
 # ===========================================================================
 
+
 def _make_feature_table_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     """Create a minimal FeatureTable[Frequency] .qza for testing."""
     import uuid as _uuid_mod
@@ -182,8 +191,7 @@ def _make_feature_table_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     biom_path = tmp_path / "ft.biom"
     pyloseq.write_biom(ps, biom_path, version="2.1")
 
-    meta = {"uuid": artifact_uuid, "type": "FeatureTable[Frequency]",
-            "format": "BIOMV210DirFmt"}
+    meta = {"uuid": artifact_uuid, "type": "FeatureTable[Frequency]", "format": "BIOMV210DirFmt"}
     with zipfile.ZipFile(str(qza_path), "w") as zf:
         zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
         zf.write(str(biom_path), f"{artifact_uuid}/data/feature-table.biom")
@@ -204,11 +212,12 @@ def _make_taxonomy_qza(tmp_path: Path, ps: Phyloseq) -> Path:
         lambda r: "; ".join(f"{k[0].lower()}__{v}" for k, v in r.items() if pd.notna(v)),
         axis=1,
     )
-    tsv = "Feature ID\tTaxon\n" + "\n".join(
-        f"{idx}\t{taxon}" for idx, taxon in taxon_col.items()
-    )
-    meta = {"uuid": artifact_uuid, "type": "FeatureData[Taxonomy]",
-            "format": "TSVTaxonomyDirectoryFormat"}
+    tsv = "Feature ID\tTaxon\n" + "\n".join(f"{idx}\t{taxon}" for idx, taxon in taxon_col.items())
+    meta = {
+        "uuid": artifact_uuid,
+        "type": "FeatureData[Taxonomy]",
+        "format": "TSVTaxonomyDirectoryFormat",
+    }
     with zipfile.ZipFile(str(qza_path), "w") as zf:
         zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
         zf.writestr(f"{artifact_uuid}/data/taxonomy.tsv", tsv)
@@ -224,8 +233,7 @@ def _make_tree_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     qza_path = tmp_path / "tree.qza"
     if ps.phy_tree is None:
         raise ValueError("ps has no phy_tree")
-    meta = {"uuid": artifact_uuid, "type": "Phylogeny[Rooted]",
-            "format": "NewickDirectoryFormat"}
+    meta = {"uuid": artifact_uuid, "type": "Phylogeny[Rooted]", "format": "NewickDirectoryFormat"}
     with zipfile.ZipFile(str(qza_path), "w") as zf:
         zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
         zf.writestr(f"{artifact_uuid}/data/tree.nwk", ps.phy_tree.to_newick())
@@ -262,12 +270,16 @@ class TestQza:
         import uuid as _uuid_mod
 
         import yaml
+
         artifact_uuid = str(_uuid_mod.uuid4())
         qza_path = tmp_path / "prov.qza"
         biom_path = tmp_path / "ft2.biom"
         pyloseq.write_biom(ps, biom_path, version="2.1")
-        meta = {"uuid": artifact_uuid, "type": "FeatureTable[Frequency]",
-                "format": "BIOMV210DirFmt"}
+        meta = {
+            "uuid": artifact_uuid,
+            "type": "FeatureTable[Frequency]",
+            "format": "BIOMV210DirFmt",
+        }
         with zipfile.ZipFile(str(qza_path), "w") as zf:
             zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
             zf.write(str(biom_path), f"{artifact_uuid}/data/feature-table.biom")
@@ -287,6 +299,7 @@ class TestQza:
         import uuid as _uuid_mod
 
         import yaml
+
         artifact_uuid = str(_uuid_mod.uuid4())
         qza_path = tmp_path / "bad.qza"
         meta = {"uuid": artifact_uuid, "type": "SomeUnknown[Type]", "format": "X"}
@@ -294,6 +307,7 @@ class TestQza:
             zf.writestr(f"{artifact_uuid}/metadata.yaml", yaml.dump(meta))
         with pytest.raises(ValueError, match="Unsupported"):
             from pyloseq.io._qza import _read_qza_artifact
+
             _read_qza_artifact(qza_path)
 
     def test_no_features_raises(self, tmp_path: Path) -> None:
@@ -304,6 +318,7 @@ class TestQza:
 # ===========================================================================
 # Ticket 2.4 — QIIME 1
 # ===========================================================================
+
 
 def _write_qiime1_otu_table(path: Path, ps: Phyloseq) -> None:
     df = ps.otu_table.to_dataframe()
@@ -389,6 +404,7 @@ class TestQiime1:
 # Ticket 2.5 — mothur
 # ===========================================================================
 
+
 def _write_mothur_shared(path: Path, ps: Phyloseq, cutoff: str = "0.03") -> None:
     df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
@@ -473,6 +489,7 @@ class TestMothur:
 # Ticket 2.7 — CSV/TSV round-trip
 # ===========================================================================
 
+
 class TestCsv:
     def test_otu_only_round_trip(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
@@ -525,8 +542,18 @@ class TestCsv:
 # Top-level API surface check
 # ===========================================================================
 
+
 def test_io_functions_exported() -> None:
-    for name in ["read_biom", "write_biom", "read_qza", "write_qza",
-                 "read_qiime", "read_mothur", "show_mothur_cutoffs",
-                 "select_mothur_cutoff", "read_csv", "to_csv"]:
+    for name in [
+        "read_biom",
+        "write_biom",
+        "read_qza",
+        "write_qza",
+        "read_qiime",
+        "read_mothur",
+        "show_mothur_cutoffs",
+        "select_mothur_cutoff",
+        "read_csv",
+        "to_csv",
+    ]:
         assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"

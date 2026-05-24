@@ -86,6 +86,7 @@ def _read_qiime1_otu_table(path: Path) -> pd.DataFrame:
             lines.append(line)
 
     import io
+
     raw = "".join(lines)
     df = pd.read_csv(io.StringIO(raw), sep="\t", index_col=0)
 

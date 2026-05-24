@@ -11,8 +11,15 @@ import pandas as pd
 from pyloseq._exceptions import pyloseqValidationError
 
 _ALL_MEASURES = [
-    "Observed", "Chao1", "se.chao1", "ACE", "se.ACE",
-    "Shannon", "Simpson", "InvSimpson", "Fisher",
+    "Observed",
+    "Chao1",
+    "se.chao1",
+    "ACE",
+    "se.ACE",
+    "Shannon",
+    "Simpson",
+    "InvSimpson",
+    "Fisher",
 ]
 
 
@@ -52,10 +59,7 @@ def estimate_richness(
     else:
         bad = [m for m in measures if m not in _ALL_MEASURES]
         if bad:
-            raise pyloseqValidationError(
-                f"Unknown measure(s): {bad}. "
-                f"Choose from: {_ALL_MEASURES}"
-            )
+            raise pyloseqValidationError(f"Unknown measure(s): {bad}. Choose from: {_ALL_MEASURES}")
 
     otu_df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
@@ -65,10 +69,7 @@ def estimate_richness(
         pooled = otu_df.sum(axis=0)
         rows = {str(otu_df.index[0]): _richness_single(pooled.values, measures)}
     else:
-        rows = {
-            str(sid): _richness_single(row.values, measures)
-            for sid, row in otu_df.iterrows()
-        }
+        rows = {str(sid): _richness_single(row.values, measures) for sid, row in otu_df.iterrows()}
 
     df = pd.DataFrame.from_dict(rows, orient="index")
     return df[measures]
@@ -113,7 +114,7 @@ def _richness_single(raw: np.ndarray, measures: list[str]) -> dict[str, float]:
     if "Simpson" in measures or "InvSimpson" in measures:
         if n > 0:
             p = nonzero / n
-            d = float(np.sum(p ** 2))
+            d = float(np.sum(p**2))
             row["Simpson"] = 1.0 - d
             row["InvSimpson"] = 1.0 / d if d > 0 else float("inf")
         else:
@@ -133,9 +134,9 @@ def _chao1(nonzero: np.ndarray) -> tuple[float, float]:
     f2 = int(np.sum(nonzero == 2))
 
     if f2 > 0:
-        chao1 = s_obs + f1 ** 2 / (2.0 * f2)
+        chao1 = s_obs + f1**2 / (2.0 * f2)
         r = f1 / f2
-        se = float(np.sqrt(f2 * (r ** 4 / 4.0 + r ** 3 + r ** 2 / 2.0)))
+        se = float(np.sqrt(f2 * (r**4 / 4.0 + r**3 + r**2 / 2.0)))
     else:
         chao1 = s_obs + f1 * (f1 - 1) / 2.0
         # SE when f2 == 0 (Chao 1984 / Colwell 2004)
@@ -172,10 +173,8 @@ def _ace(nonzero: np.ndarray) -> tuple[float, float]:
         gamma_sq = 0.0
     else:
         gamma_sq = max(
-            s_rare / c_ace * sum(
-                int(i + 1) * int(i) * int(f_i[i])
-                for i in range(len(f_i))
-            ) / denom - 1.0,
+            s_rare / c_ace * sum(int(i + 1) * int(i) * int(f_i[i]) for i in range(len(f_i))) / denom
+            - 1.0,
             0.0,
         )
 

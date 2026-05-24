@@ -151,10 +151,25 @@ def plot_richness(
         x_col = x
 
     # Melt to long form for faceting
-    measure_cols = [c for c in rich_df.columns if c in (measures or [
-        "Observed", "Chao1", "se.chao1", "ACE", "se.ACE",
-        "Shannon", "Simpson", "InvSimpson", "Fisher",
-    ])]
+    measure_cols = [
+        c
+        for c in rich_df.columns
+        if c
+        in (
+            measures
+            or [
+                "Observed",
+                "Chao1",
+                "se.chao1",
+                "ACE",
+                "se.ACE",
+                "Shannon",
+                "Simpson",
+                "InvSimpson",
+                "Fisher",
+            ]
+        )
+    ]
     id_vars = [c for c in rich_df.columns if c not in measure_cols]
     long = rich_df.reset_index().melt(
         id_vars=["index"] + [c for c in id_vars if c != "index"],
@@ -163,8 +178,7 @@ def plot_richness(
         value_name="Value",
     )
 
-    mapping: dict[str, str] = {"x": x_col if x_col in long.columns else "index",
-                                 "y": "Value"}
+    mapping: dict[str, str] = {"x": x_col if x_col in long.columns else "index", "y": "Value"}
     if color and color in long.columns:
         mapping["color"] = color
 
@@ -236,9 +250,9 @@ def plot_ordination(
         return _plot_scree(ord, title=title)
 
     if type in ("samples", "biplot"):
-        plot_df = pd.DataFrame(ord.samples.values[:, :2],
-                               index=ord.samples.index,
-                               columns=["Axis.1", "Axis.2"])
+        plot_df = pd.DataFrame(
+            ord.samples.values[:, :2], index=ord.samples.index, columns=["Axis.1", "Axis.2"]
+        )
         plot_df.index.name = "sample_id"
 
         if ps.sample_data is not None:
@@ -333,10 +347,12 @@ def _plot_scree(ord: Any, title: str | None = None) -> Any:
         raise pyloseqValidationError(
             "Ordination result has no proportion_explained; scree plot unavailable."
         )
-    df = pd.DataFrame({
-        "Axis": range(1, len(ord.proportion_explained) + 1),
-        "Variance": ord.proportion_explained.values * 100,
-    })
+    df = pd.DataFrame(
+        {
+            "Axis": range(1, len(ord.proportion_explained) + 1),
+            "Variance": ord.proportion_explained.values * 100,
+        }
+    )
     p = (
         ggplot(df, aes("Axis", "Variance"))
         + geom_line()
@@ -382,11 +398,7 @@ def _plot_split(
         mapping["color"] = color
     if shape and shape in combined.columns:
         mapping["shape"] = shape
-    return (
-        ggplot(combined, aes(**mapping))
-        + geom_point(size=3)
-        + facet_wrap("~_panel")
-    )
+    return ggplot(combined, aes(**mapping)) + geom_point(size=3) + facet_wrap("~_panel")
 
 
 # ---------------------------------------------------------------------------
@@ -596,8 +608,8 @@ def plot_network(
         x0, y0 = pos[u]
         x1, y1 = pos[v]
         edge_rows.append({"x": x0, "y": y0, "xend": x1, "yend": y1})
-    edges_df = pd.DataFrame(edge_rows) if edge_rows else pd.DataFrame(
-        columns=["x", "y", "xend", "yend"]
+    edges_df = (
+        pd.DataFrame(edge_rows) if edge_rows else pd.DataFrame(columns=["x", "y", "xend", "yend"])
     )
 
     mapping: dict[str, str] = {"x": "x", "y": "y"}

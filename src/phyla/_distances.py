@@ -22,27 +22,23 @@ if TYPE_CHECKING:
 
 # Maps pyloseq/R method names → (scipy_pdist_metric, binarize)
 _SCIPY_METHODS: dict[str, tuple[str, bool]] = {
-    "euclidean":  ("euclidean",  False),
-    "manhattan":  ("cityblock",  False),
-    "canberra":   ("canberra",   False),
-    "bray":       ("braycurtis", False),
-    "jaccard":    ("jaccard",    True),   # phyloseq uses binary Jaccard by default
-    "binary":     ("jaccard",    True),
-    "maximum":    ("chebyshev",  False),
-    "minkowski":  ("minkowski",  False),
-    "cosine":     ("cosine",     False),
-    "correlation":("correlation",False),
-    "sorensen":   ("dice",       True),   # Dice = Sørensen
+    "euclidean": ("euclidean", False),
+    "manhattan": ("cityblock", False),
+    "canberra": ("canberra", False),
+    "bray": ("braycurtis", False),
+    "jaccard": ("jaccard", True),  # phyloseq uses binary Jaccard by default
+    "binary": ("jaccard", True),
+    "maximum": ("chebyshev", False),
+    "minkowski": ("minkowski", False),
+    "cosine": ("cosine", False),
+    "correlation": ("correlation", False),
+    "sorensen": ("dice", True),  # Dice = Sørensen
 }
 
 _PHYLO_METHODS = {"unifrac", "wunifrac"}
 _SPECIAL_METHODS = {"jsd", "dpcoa"}
 
-_ALL_METHODS = (
-    sorted(_SCIPY_METHODS.keys())
-    + sorted(_PHYLO_METHODS)
-    + sorted(_SPECIAL_METHODS)
-)
+_ALL_METHODS = sorted(_SCIPY_METHODS.keys()) + sorted(_PHYLO_METHODS) + sorted(_SPECIAL_METHODS)
 
 
 def distance_method_list() -> dict[str, list[str]]:
@@ -52,7 +48,7 @@ def distance_method_list() -> dict[str, list[str]]:
     """
     return {
         "phylogenetic": sorted(_PHYLO_METHODS | {"dpcoa"}),
-        "information":  ["jsd"],
+        "information": ["jsd"],
         "vegan-equivalent": sorted(_SCIPY_METHODS.keys()),
     }
 
@@ -103,10 +99,7 @@ def distance(
     if m in _SCIPY_METHODS:
         return _scipy_distance(ps, m, type=type, **kwargs)
 
-    raise pyloseqValidationError(
-        f"Unknown distance method: '{method}'. "
-        f"Supported: {_ALL_METHODS}"
-    )
+    raise pyloseqValidationError(f"Unknown distance method: '{method}'. Supported: {_ALL_METHODS}")
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +230,7 @@ def _jsd_distance(ps: Phyloseq, type: str = "samples") -> Any:
     condensed = pdist(mat, metric=jensenshannon)
     sq = squareform(condensed)
     # JSD returns divergence; square to get distance (as R phyloseq does)
-    sq = sq ** 2
+    sq = sq**2
     return DistanceMatrix(sq, ids=ids)
 
 
@@ -269,7 +262,7 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
     p = len(common)
 
     # Double-center D²
-    D2 = D_sub ** 2
+    D2 = D_sub**2
     H = np.eye(p) - np.ones((p, p)) / p
     Q = -0.5 * H @ D2 @ H  # p × p species inner-product matrix
 

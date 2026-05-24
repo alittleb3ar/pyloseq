@@ -31,7 +31,7 @@ def _parse_taxonomy_entry(value: Any, mode: TaxonomyParser) -> dict[str, str]:
     if mode in ("qiime", "greengenes"):
         parts = [re.sub(r"^[a-z]__", "", p).strip() for p in parts]
     n = len(parts)
-    ranks = _DEFAULT_RANKS[:n] if n <= len(_DEFAULT_RANKS) else [f"Level{i+1}" for i in range(n)]
+    ranks = _DEFAULT_RANKS[:n] if n <= len(_DEFAULT_RANKS) else [f"Level{i + 1}" for i in range(n)]
     return dict(zip(ranks, parts, strict=False))
 
 
@@ -77,9 +77,7 @@ def read_biom(
         otu.taxa_names = pd.Index(taxa_ids)
         otu.sample_names = pd.Index(sample_ids)
     else:
-        df = pd.DataFrame(
-            mat.toarray(), index=taxa_ids, columns=sample_ids, dtype=float
-        )
+        df = pd.DataFrame(mat.toarray(), index=taxa_ids, columns=sample_ids, dtype=float)
         otu = OtuTable(df, taxa_are_rows=True)
 
     # ---- Sample metadata -------------------------------------------------
@@ -107,6 +105,7 @@ def read_biom(
     extra: dict[str, Any] = {}
     try:
         import h5py  # type: ignore[import-untyped]
+
         with h5py.File(str(path), "r") as hf:
             extra = dict(hf.attrs.items())
     except Exception:  # noqa: BLE001

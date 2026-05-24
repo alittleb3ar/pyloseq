@@ -20,9 +20,7 @@ class PhyTree:
 
     def __init__(self, tree_node: skbio.tree.TreeNode) -> None:
         if not isinstance(tree_node, skbio.tree.TreeNode):
-            raise TypeError(
-                f"PhyTree requires a skbio.tree.TreeNode, got {type(tree_node)!r}"
-            )
+            raise TypeError(f"PhyTree requires a skbio.tree.TreeNode, got {type(tree_node)!r}")
         self._tree = tree_node
 
     @classmethod
@@ -34,9 +32,7 @@ class PhyTree:
         # convert_underscores=False: preserve underscores in tip names as-is.
         # Newick convention maps underscores to spaces, but phyloseq datasets
         # use underscores as part of OTU identifiers — we must not mangle them.
-        tree = skbio.tree.TreeNode.read(
-            StringIO(s), format="newick", convert_underscores=False
-        )
+        tree = skbio.tree.TreeNode.read(StringIO(s), format="newick", convert_underscores=False)
         return cls(tree)
 
     @classmethod
@@ -45,9 +41,7 @@ class PhyTree:
 
         R reference: phy_tree(read.tree(file=path))
         """
-        tree = skbio.tree.TreeNode.read(
-            str(path), format="newick", convert_underscores=False
-        )
+        tree = skbio.tree.TreeNode.read(str(path), format="newick", convert_underscores=False)
         return cls(tree)
 
     @classmethod
@@ -81,11 +75,7 @@ class PhyTree:
 
         R reference: phy_tree(x)$node.label
         """
-        return [
-            n.name
-            for n in self._tree.traverse()
-            if not n.is_tip() and n.name is not None
-        ]
+        return [n.name for n in self._tree.traverse() if not n.is_tip() and n.name is not None]
 
     @property
     def n_tips(self) -> int:
@@ -101,9 +91,7 @@ class PhyTree:
 
         R reference: sum(phy_tree(x)$edge.length)
         """
-        return float(
-            sum(n.length for n in self._tree.traverse() if n.length is not None)
-        )
+        return float(sum(n.length for n in self._tree.traverse() if n.length is not None))
 
     @property
     def is_rooted(self) -> bool:

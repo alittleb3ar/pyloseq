@@ -224,9 +224,11 @@ def write_qza(
             if ps.tax_table is None:
                 raise ValueError("No tax_table to export as FeatureData[Taxonomy]")
             tax_df = ps.tax_table.to_frame().copy()
-            tax_df.insert(0, "Taxon", tax_df.apply(
-                lambda r: "; ".join(str(v) for v in r if pd.notna(v)), axis=1
-            ))
+            tax_df.insert(
+                0,
+                "Taxon",
+                tax_df.apply(lambda r: "; ".join(str(v) for v in r if pd.notna(v)), axis=1),
+            )
             zf.writestr(
                 f"{artifact_uuid}/data/taxonomy.tsv",
                 tax_df[["Taxon"]].to_csv(sep="\t"),

@@ -40,9 +40,7 @@ skip_no_golden = pytest.mark.skipif(
 
 class TestOtuTable:
     def test_construct_from_dataframe(self) -> None:
-        df = pd.DataFrame(
-            [[1, 2], [3, 4]], index=["OTU1", "OTU2"], columns=["S1", "S2"]
-        )
+        df = pd.DataFrame([[1, 2], [3, 4]], index=["OTU1", "OTU2"], columns=["S1", "S2"])
         ot = OtuTable(df, taxa_are_rows=True)
         assert ot.ntaxa == 2
         assert ot.nsamples == 2
@@ -82,9 +80,7 @@ class TestOtuTable:
     def test_orientation_flip_preserves_logical_counts(self) -> None:
         # Flipping taxa_are_rows transposes the stored matrix but the number
         # of taxa and samples is a property of the data, not the orientation.
-        df = pd.DataFrame(
-            [[1, 2]], index=["OTU1"], columns=["S1", "S2"]
-        )
+        df = pd.DataFrame([[1, 2]], index=["OTU1"], columns=["S1", "S2"])
         ot = OtuTable(df, taxa_are_rows=True)
         assert ot.ntaxa == 1
         assert ot.nsamples == 2
@@ -170,9 +166,7 @@ class TestOtuTable:
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
         python_sums = ot.taxa_sums().sort_index()
         r_sums = ref["taxa_sums"].sort_index()
-        np.testing.assert_allclose(
-            python_sums.values, r_sums.values, atol=1e-10, rtol=1e-12
-        )
+        np.testing.assert_allclose(python_sums.values, r_sums.values, atol=1e-10, rtol=1e-12)
 
     @skip_no_golden
     def test_sample_sums_match_r_reference(self) -> None:
@@ -182,9 +176,7 @@ class TestOtuTable:
         ot = OtuTable(ref["otu_table"], taxa_are_rows=True)
         python_sums = ot.sample_sums().sort_index()
         r_sums = ref["sample_sums"].sort_index()
-        np.testing.assert_allclose(
-            python_sums.values, r_sums.values, atol=1e-10, rtol=1e-12
-        )
+        np.testing.assert_allclose(python_sums.values, r_sums.values, atol=1e-10, rtol=1e-12)
 
 
 # ===========================================================================
@@ -227,9 +219,7 @@ class TestSampleData:
 
 class TestTaxTable:
     def test_basic_construction(self) -> None:
-        df = pd.DataFrame(
-            {"Phylum": ["Firmicutes"], "Genus": ["Bacillus"]}, index=["OTU1"]
-        )
+        df = pd.DataFrame({"Phylum": ["Firmicutes"], "Genus": ["Bacillus"]}, index=["OTU1"])
         tt = TaxTable(df)
         assert tt.rank_names == ["Phylum", "Genus"]
         assert list(tt.names) == ["OTU1"]
@@ -302,9 +292,7 @@ class TestPhyTree:
         t = PhyTree.from_newick(self.SIMPLE_NWK)
         nwk2 = t.to_newick()
         t2 = PhyTree.from_newick(nwk2)
-        np.testing.assert_allclose(
-            t.total_branch_length, t2.total_branch_length, atol=1e-12
-        )
+        np.testing.assert_allclose(t.total_branch_length, t2.total_branch_length, atol=1e-12)
 
     @skip_no_golden
     def test_global_patterns_tree_ntips(self) -> None:
@@ -347,9 +335,7 @@ class TestPhyloseqConstructor:
         assert ps.tax_table is None
 
     def test_with_sample_data(self) -> None:
-        df_otu = pd.DataFrame(
-            [[1, 2], [3, 4]], index=["OTU1", "OTU2"], columns=["S1", "S2"]
-        )
+        df_otu = pd.DataFrame([[1, 2], [3, 4]], index=["OTU1", "OTU2"], columns=["S1", "S2"])
         df_sam = pd.DataFrame({"group": ["A", "B"]}, index=["S1", "S2"])
         ps = Phyloseq(otu=OtuTable(df_otu), sam=SampleData(df_sam))
         assert ps.nsamples == 2
@@ -368,18 +354,14 @@ class TestPhyloseqConstructor:
         assert "C" not in ps.taxa_names
 
     def test_mismatched_samples_pruned_to_intersection(self) -> None:
-        df_otu = pd.DataFrame(
-            [[1, 2, 3]], index=["OTU1"], columns=["S1", "S2", "S3"]
-        )
+        df_otu = pd.DataFrame([[1, 2, 3]], index=["OTU1"], columns=["S1", "S2", "S3"])
         df_sam = pd.DataFrame({"x": [1, 2]}, index=["S1", "S2"])
         ps = Phyloseq(otu=OtuTable(df_otu), sam=SampleData(df_sam))
         assert ps.nsamples == 2
         assert "S3" not in ps.sample_names
 
     def test_strict_mode_raises_on_taxa_mismatch(self) -> None:
-        df_otu = pd.DataFrame(
-            [[1, 2], [3, 4]], index=["A", "B"], columns=["S1", "S2"]
-        )
+        df_otu = pd.DataFrame([[1, 2], [3, 4]], index=["A", "B"], columns=["S1", "S2"])
         df_tax = pd.DataFrame({"Phylum": ["P1"]}, index=["A"])
         with pytest.raises(pyloseqValidationError):
             Phyloseq(otu=OtuTable(df_otu), tax=TaxTable(df_tax), strict=True)
@@ -451,9 +433,7 @@ class TestAccessors:
             index=["OTU1", "OTU2"],
             columns=["S1", "S2"],
         )
-        df_sam = pd.DataFrame(
-            {"group": ["A", "B"], "depth": [100, 200]}, index=["S1", "S2"]
-        )
+        df_sam = pd.DataFrame({"group": ["A", "B"], "depth": [100, 200]}, index=["S1", "S2"])
         df_tax = pd.DataFrame(
             {"Phylum": ["Firm", "Bact"], "Genus": ["Lacto", "Bact"]},
             index=["OTU1", "OTU2"],

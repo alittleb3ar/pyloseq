@@ -16,13 +16,14 @@ if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
 
 _SUPPORTED_METHODS = {
-    "PCoA", "MDS",       # aliases — PCoA via scikit-bio pcoa()
-    "NMDS",              # Non-metric MDS via scikit-bio nmds()
-    "CCA",               # Canonical Correspondence Analysis
-    "RDA",               # Redundancy Analysis
-    "CAP",               # Constrained Analysis of Principal Coordinates
-    "DPCoA",             # Double Principal Coordinates Analysis
-    "DCA",               # Detrended Correspondence Analysis (not implemented)
+    "PCoA",
+    "MDS",  # aliases — PCoA via scikit-bio pcoa()
+    "NMDS",  # Non-metric MDS via scikit-bio nmds()
+    "CCA",  # Canonical Correspondence Analysis
+    "RDA",  # Redundancy Analysis
+    "CAP",  # Constrained Analysis of Principal Coordinates
+    "DPCoA",  # Double Principal Coordinates Analysis
+    "DCA",  # Detrended Correspondence Analysis (not implemented)
 }
 
 
@@ -62,8 +63,7 @@ def ordinate(
 
     if m not in {s.upper() for s in _SUPPORTED_METHODS}:
         raise pyloseqValidationError(
-            f"Unknown ordination method: '{method}'. "
-            f"Supported: {sorted(_SUPPORTED_METHODS)}"
+            f"Unknown ordination method: '{method}'. Supported: {sorted(_SUPPORTED_METHODS)}"
         )
 
     if m in ("PCOA", "MDS"):
@@ -102,9 +102,7 @@ def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
         from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
         return _distance(ps, distance)
-    raise TypeError(
-        f"distance must be a string or DistanceMatrix, got {type(distance)!r}"
-    )
+    raise TypeError(f"distance must be a string or DistanceMatrix, got {type(distance)!r}")
 
 
 def _pcoa(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
@@ -161,7 +159,7 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
     except ImportError:
         # Double centering for metric MDS (classical MDS approximation)
         H = np.eye(len(dist_sq)) - np.ones_like(dist_sq) / len(dist_sq)
-        B = -0.5 * H @ (dist_sq ** 2) @ H
+        B = -0.5 * H @ (dist_sq**2) @ H
         vals, vecs = np.linalg.eigh(B)
         idx = np.argsort(-vals)
         vals, vecs = vals[idx], vecs[:, idx]
@@ -169,7 +167,7 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
         coords = vecs[:, :n_dims] * np.sqrt(vals_pos)
 
     sample_ids = list(dm.ids)
-    col_names = [f"NMDS{i+1}" for i in range(n_dims)]
+    col_names = [f"NMDS{i + 1}" for i in range(n_dims)]
     samples_df = pd.DataFrame(coords, index=sample_ids, columns=col_names)
 
     return OrdinationResults(
@@ -201,9 +199,7 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
     terms = [t.strip() for t in formula.lstrip("~").split("+")]
     missing = [t for t in terms if t not in sam_df.columns]
     if missing:
-        raise pyloseqValidationError(
-            f"Formula terms not found in sample_data: {missing}"
-        )
+        raise pyloseqValidationError(f"Formula terms not found in sample_data: {missing}")
     sub = sam_df[terms]
     # Dummy-encode categorical/object columns so RDA/CCA get numeric input
     return pd.get_dummies(sub, drop_first=True).astype(float)

@@ -32,6 +32,7 @@ pytestmark = pytest.mark.skipif(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def globalpatterns():
     from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
@@ -62,6 +63,7 @@ def esophagus():
 # Ticket 6.1 — Benchmarks with hard thresholds
 # ---------------------------------------------------------------------------
 
+
 def test_benchmark_constructor(benchmark):
     """Phyloseq constructor on GlobalPatterns: < 3 s."""
     from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
@@ -88,9 +90,7 @@ def test_benchmark_tax_glom_family(benchmark, globalpatterns):
     """tax_glom at Family rank on GlobalPatterns: < 5 s."""
     from pyloseq import tax_glom
 
-    result = benchmark.pedantic(
-        tax_glom, args=(globalpatterns, "Family"), rounds=3, iterations=1
-    )
+    result = benchmark.pedantic(tax_glom, args=(globalpatterns, "Family"), rounds=3, iterations=1)
     assert result is not None
     assert benchmark.stats["mean"] < 5.0, (
         f"tax_glom too slow: {benchmark.stats['mean']:.2f}s (threshold: 5s)"
@@ -183,7 +183,5 @@ def test_benchmark_memory_globalpatterns():
     tracemalloc.stop()
 
     peak_mb = peak / 1024 / 1024
-    assert peak_mb < 500, (
-        f"Memory too high: {peak_mb:.1f} MB (threshold: 500 MB)"
-    )
+    assert peak_mb < 500, f"Memory too high: {peak_mb:.1f} MB (threshold: 500 MB)"
     assert ps is not None

@@ -97,9 +97,7 @@ def prune_taxa(
     if ps.refseq is not None:
         import skbio  # noqa: PLC0415
 
-        new_seqs: dict[str, skbio.DNA] = {
-            k: ps.refseq[k] for k in keep if k in ps.refseq.names
-        }
+        new_seqs: dict[str, skbio.DNA] = {k: ps.refseq[k] for k in keep if k in ps.refseq.names}
         if new_seqs:
             new_refseq = RefSeq(new_seqs)
 
@@ -557,9 +555,7 @@ def tax_glom(
     ranks = list(tax_df.columns)
 
     if taxrank not in ranks:
-        raise pyloseqValidationError(
-            f"Rank '{taxrank}' not found in tax_table. Available: {ranks}"
-        )
+        raise pyloseqValidationError(f"Rank '{taxrank}' not found in tax_table. Available: {ranks}")
 
     rank_idx = ranks.index(taxrank)
     coarser = ranks[: rank_idx + 1]  # all ranks up to and including taxrank
@@ -576,8 +572,7 @@ def tax_glom(
         target_vals = tax_df[taxrank]
         bad_set = set(bad_empty) | {np.nan}
         mask = target_vals.apply(
-            lambda v: not (pd.isna(v) if not isinstance(v, str) else False)
-            and v not in bad_set
+            lambda v: not (pd.isna(v) if not isinstance(v, str) else False) and v not in bad_set
         )
         otu_df = otu_df[mask]
         tax_df = tax_df[mask]
@@ -590,8 +585,7 @@ def tax_glom(
     # Build a grouping key from the coarser ranks (fill NA for stable grouping)
     group_key_ser: pd.Series = tax_df[coarser].apply(
         lambda row: tuple(
-            str(v) if not (isinstance(v, float) and np.isnan(v)) else "__NA__"
-            for v in row
+            str(v) if not (isinstance(v, float) and np.isnan(v)) else "__NA__" for v in row
         ),
         axis=1,
     )
@@ -801,8 +795,7 @@ def merge_samples(
     sam_df = ps.sample_data.to_frame()
     if group_var not in sam_df.columns:
         raise pyloseqValidationError(
-            f"Variable '{group_var}' not found in sample_data. "
-            f"Available: {list(sam_df.columns)}"
+            f"Variable '{group_var}' not found in sample_data. Available: {list(sam_df.columns)}"
         )
 
     groups: pd.Series = sam_df[group_var]

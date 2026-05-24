@@ -43,8 +43,8 @@ UF_WT_PRESENT = (ES_GOLDEN / "unifrac_weighted" / "normalized.parquet").exists()
 def _make_ps(ntaxa: int = 6, nsamples: int = 4) -> Phyloseq:
     rng = np.random.default_rng(42)
     counts = rng.integers(1, 100, size=(ntaxa, nsamples)).astype(float)
-    taxa = [f"OTU{i+1}" for i in range(ntaxa)]
-    samples = [f"S{i+1}" for i in range(nsamples)]
+    taxa = [f"OTU{i + 1}" for i in range(ntaxa)]
+    samples = [f"S{i + 1}" for i in range(nsamples)]
     df = pd.DataFrame(counts, index=taxa, columns=samples)
     sam_df = pd.DataFrame(
         {"Group": ["A", "A", "B", "B"][:nsamples]},
@@ -70,7 +70,7 @@ def _make_ps_with_tree() -> Phyloseq:
     rng = np.random.default_rng(7)
     counts = rng.integers(1, 200, size=(4, 5)).astype(float)
     taxa = ["OTU1", "OTU2", "OTU3", "OTU4"]
-    samples = [f"S{i+1}" for i in range(5)]
+    samples = [f"S{i + 1}" for i in range(5)]
     df = pd.DataFrame(counts, index=taxa, columns=samples)
     return Phyloseq(
         otu=OtuTable(df, taxa_are_rows=True),
@@ -105,8 +105,17 @@ class TestEstimateRichness:
     def test_default_measures(self) -> None:
         ps = _make_ps()
         df = estimate_richness(ps)
-        expected = ["Observed", "Chao1", "se.chao1", "ACE", "se.ACE",
-                    "Shannon", "Simpson", "InvSimpson", "Fisher"]
+        expected = [
+            "Observed",
+            "Chao1",
+            "se.chao1",
+            "ACE",
+            "se.ACE",
+            "Shannon",
+            "Simpson",
+            "InvSimpson",
+            "Fisher",
+        ]
         assert list(df.columns) == expected
 
     def test_subset_measures(self) -> None:
@@ -298,9 +307,7 @@ class TestUnifrac:
         ps = _make_ps_with_tree()
         dm1 = unifrac(ps, weighted=False)
         dm2 = distance(ps, "unifrac")
-        np.testing.assert_allclose(
-            np.array(dm1.data), np.array(dm2.data), atol=1e-12
-        )
+        np.testing.assert_allclose(np.array(dm1.data), np.array(dm2.data), atol=1e-12)
 
     @pytest.mark.skipif(not (ES_PRESENT and UF_UN_PRESENT), reason="golden files not generated yet")
     def test_unweighted_unifrac_matches_r_esophagus(self) -> None:
@@ -364,9 +371,7 @@ class TestOrdinate:
         ps = _make_ps()
         r1 = ordinate(ps, method="PCoA", distance="bray")
         r2 = ordinate(ps, method="MDS", distance="bray")
-        np.testing.assert_allclose(
-            np.abs(r1.samples.values), np.abs(r2.samples.values), atol=1e-10
-        )
+        np.testing.assert_allclose(np.abs(r1.samples.values), np.abs(r2.samples.values), atol=1e-10)
 
     def test_pcoa_sample_count(self) -> None:
         ps = _make_ps()
@@ -433,11 +438,10 @@ class TestPlotting:
     def test_plot_bar_with_fill(self) -> None:
         from plotnine import ggplot
 
-
         ps = _make_ps()
         tax_df = pd.DataFrame(
             {"Phylum": ["A", "A", "B", "B", "C", "C"]},
-            index=[f"OTU{i+1}" for i in range(6)],
+            index=[f"OTU{i + 1}" for i in range(6)],
         )
         ps2 = Phyloseq(otu=ps.otu_table.copy(), tax=TaxTable(tax_df))
         p = pyloseq.plot_bar(ps2, fill="Phylum")
@@ -489,9 +493,15 @@ class TestPlotting:
 def test_phase4_functions_exported() -> None:
     for name in [
         "estimate_richness",
-        "distance", "distance_method_list", "unifrac",
+        "distance",
+        "distance_method_list",
+        "unifrac",
         "ordinate",
-        "plot_bar", "plot_richness", "plot_ordination", "plot_heatmap",
-        "make_network", "plot_network",
+        "plot_bar",
+        "plot_richness",
+        "plot_ordination",
+        "plot_heatmap",
+        "make_network",
+        "plot_network",
     ]:
         assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"
