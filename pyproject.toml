@@ -4,15 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyloseq"
-version = "0.1.0"
+version = "1.0.0"
 description = "A native Python port of R/Bioconductor phyloseq — PyData-native microbiome analysis"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-authors = [{ name = "Mike Donovan", email = "michael.donovan@adelabio.com" }]
+authors = [{ name = "Michael Donovan", email = "michael.donovan@adelabio.com" }]
 keywords = ["microbiome", "metagenomics", "bioinformatics", "phyloseq", "16S"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
