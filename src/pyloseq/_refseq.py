@@ -6,7 +6,6 @@ R reference: phyloseq::refseq(object)
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import skbio
 import skbio.io  # noqa: F401 — ensures skbio.io is registered
@@ -18,7 +17,7 @@ class RefSeq:
     R reference: phyloseq::refseq(object)
     """
 
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, skbio.DNA]) -> None:
         self._seqs: dict[str, skbio.DNA] = dict(data)
 
     @classmethod

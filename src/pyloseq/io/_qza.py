@@ -28,6 +28,18 @@ _ROOTED_TREE_TYPES = {"Phylogeny[Rooted]"}
 _UNROOTED_TREE_TYPES = {"Phylogeny[Unrooted]"}
 
 
+def _extract_to_tmp(
+    zf: zipfile.ZipFile,
+    names: list[str],
+    archive_name: str,
+    dest: Path,
+) -> None:
+    """Check that *archive_name* exists in *zf* and write it to *dest*."""
+    if archive_name not in names:
+        raise ValueError(f"Expected {archive_name} inside {zf.filename}")
+    dest.write_bytes(zf.read(archive_name))
+
+
 def _read_qza_artifact(path: str | Path) -> dict[str, Any]:
     """Extract one .qza artifact and return a dict of pyloseq components."""
     from pyloseq._refseq import RefSeq
@@ -64,20 +76,14 @@ def _read_qza_artifact(path: str | Path) -> dict[str, Any]:
             tmp = Path(tmpdir)
 
             if semantic_type in _FEATURE_TABLE_TYPES:
-                biom_name = f"{uuid}/data/feature-table.biom"
-                if biom_name not in names:
-                    raise ValueError(f"Expected {biom_name} inside {path}")
                 biom_path = tmp / "feature-table.biom"
-                biom_path.write_bytes(zf.read(biom_name))
+                _extract_to_tmp(zf, names, f"{uuid}/data/feature-table.biom", biom_path)
                 ps = read_biom(biom_path, parse_taxonomy=None)
                 result["otu_table"] = ps.otu_table
 
             elif semantic_type in _TAXONOMY_TYPES:
-                tsv_name = f"{uuid}/data/taxonomy.tsv"
-                if tsv_name not in names:
-                    raise ValueError(f"Expected {tsv_name} inside {path}")
                 tsv_path = tmp / "taxonomy.tsv"
-                tsv_path.write_bytes(zf.read(tsv_name))
+                _extract_to_tmp(zf, names, f"{uuid}/data/taxonomy.tsv", tsv_path)
                 result["tax_table"] = _parse_qiime2_taxonomy(tsv_path)
 
             elif semantic_type in _ROOTED_TREE_TYPES | _UNROOTED_TREE_TYPES:
@@ -88,11 +94,8 @@ def _read_qza_artifact(path: str | Path) -> dict[str, Any]:
                 result["phy_tree"] = PhyTree.from_newick(nwk_text)
 
             elif semantic_type in _SEQUENCE_TYPES:
-                fa_name = f"{uuid}/data/sequences.fasta"
-                if fa_name not in names:
-                    raise ValueError(f"Expected {fa_name} inside {path}")
                 fa_path = tmp / "sequences.fasta"
-                fa_path.write_bytes(zf.read(fa_name))
+                _extract_to_tmp(zf, names, f"{uuid}/data/sequences.fasta", fa_path)
                 result["refseq"] = RefSeq.from_fasta(fa_path)
 
             else:

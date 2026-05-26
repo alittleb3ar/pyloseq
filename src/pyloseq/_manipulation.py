@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -24,42 +24,36 @@ from pyloseq._tree import PhyTree
 if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
 
+_T = TypeVar("_T")
 
-class _Unset:
-    """Sentinel — means "copy this component from the source Phyloseq"."""
+_SENTINEL = object()  # private sentinel: "copy this component from the source Phyloseq"
 
 
-_UNSET = _Unset()
+def _keep(val: Any, default: _T) -> _T:
+    """Return *default* when *val* is the sentinel, otherwise return *val* as-is."""
+    return default if val is _SENTINEL else val
 
 
 def _rebuild_ps(
     ps: Phyloseq,
     otu: OtuTable,
     *,
-    sam: SampleData | None | _Unset = _UNSET,
-    tax: TaxTable | None | _Unset = _UNSET,
-    tree: PhyTree | None | _Unset = _UNSET,
-    refseq: RefSeq | None | _Unset = _UNSET,
-    metadata: dict[str, Any] | _Unset = _UNSET,
+    sam: SampleData | None | object = _SENTINEL,
+    tax: TaxTable | None | object = _SENTINEL,
+    tree: PhyTree | None | object = _SENTINEL,
+    refseq: RefSeq | None | object = _SENTINEL,
+    metadata: dict[str, Any] | object = _SENTINEL,
 ) -> Phyloseq:
     """Construct a new Phyloseq, copying unchanged components from *ps* by default."""
     from pyloseq._phyloseq import Phyloseq as _Phyloseq  # noqa: PLC0415
 
     return _Phyloseq(
         otu=otu,
-        sam=(ps.sample_data.copy() if ps.sample_data is not None else None)
-        if isinstance(sam, _Unset)
-        else sam,
-        tax=(ps.tax_table.copy() if ps.tax_table is not None else None)
-        if isinstance(tax, _Unset)
-        else tax,
-        tree=(ps.phy_tree.copy() if ps.phy_tree is not None else None)
-        if isinstance(tree, _Unset)
-        else tree,
-        refseq=(ps.refseq.copy() if ps.refseq is not None else None)
-        if isinstance(refseq, _Unset)
-        else refseq,
-        metadata=dict(ps.metadata) if isinstance(metadata, _Unset) else metadata,
+        sam=_keep(sam, ps.sample_data.copy() if ps.sample_data is not None else None),
+        tax=_keep(tax, ps.tax_table.copy() if ps.tax_table is not None else None),
+        tree=_keep(tree, ps.phy_tree.copy() if ps.phy_tree is not None else None),
+        refseq=_keep(refseq, ps.refseq.copy() if ps.refseq is not None else None),
+        metadata=_keep(metadata, dict(ps.metadata)),  # type: ignore[arg-type]
     )
 
 
@@ -93,9 +87,17 @@ def _ps_copy(ps: Phyloseq) -> Phyloseq:
 
 
 def _otu_taxa_rows(ps: Phyloseq) -> pd.DataFrame:
-    """Return OTU table as a DataFrame with taxa as rows."""
+    """Return OTU table as a DataFrame with taxa as rows (taxa × samples)."""
     df = ps.otu_table.to_dataframe()
     if not ps.otu_table.taxa_are_rows:
+        df = df.T
+    return df
+
+
+def _otu_samples_rows(ps: Phyloseq) -> pd.DataFrame:
+    """Return OTU table as a DataFrame with samples as rows (samples × taxa)."""
+    df = ps.otu_table.to_dataframe()
+    if ps.otu_table.taxa_are_rows:
         df = df.T
     return df
 
@@ -292,7 +294,7 @@ def filter_taxa(
     R reference: filter_taxa(physeq, flist, prune=TRUE)
     """
     df = _otu_taxa_rows(ps)
-    keep_mask: pd.Series = df.apply(predicate, axis=1).astype(bool)
+    keep_mask: pd.Series = df.apply(predicate, axis=1)
     keep = list(keep_mask.index[keep_mask])
     return prune_taxa(keep, ps)
 
@@ -317,7 +319,7 @@ def taxa_filter_mask(
     R reference: filter_taxa(physeq, flist, prune=FALSE)
     """
     df = _otu_taxa_rows(ps)
-    return cast(pd.Series, df.apply(predicate, axis=1).astype(bool))
+    return df.apply(predicate, axis=1)
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +397,9 @@ def rarefy_even_depth(
 
     if sample_size is None:
         sample_size = int(ss.min())
+
+    if sample_size <= 0:
+        raise ValueError(f"sample_size must be > 0, got {sample_size!r}")
 
     # Drop samples below threshold
     drop_mask = ss < sample_size
@@ -890,4 +895,4 @@ def psmelt(ps: Phyloseq) -> pd.DataFrame:
         tax_df = ps.tax_table.to_frame()
         long = long.merge(tax_df, left_on="OTU", right_index=True, how="left")
 
-    return cast(pd.DataFrame, long.reset_index(drop=True))
+    return long.reset_index(drop=True)

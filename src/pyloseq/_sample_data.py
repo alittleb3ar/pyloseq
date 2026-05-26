@@ -5,8 +5,6 @@ R reference: phyloseq::sample_data(object)
 
 from __future__ import annotations
 
-from typing import cast
-
 import pandas as pd
 
 
@@ -30,7 +28,7 @@ class SampleData:
 
         R reference: sample_names(x)
         """
-        return cast(pd.Index, self._df.index)
+        return self._df.index
 
     @property
     def variables(self) -> pd.Index:
@@ -38,14 +36,14 @@ class SampleData:
 
         R reference: sample_variables(x)
         """
-        return cast(pd.Index, self._df.columns)
+        return self._df.columns
 
     def to_frame(self) -> pd.DataFrame:
         """Return a copy of the underlying DataFrame.
 
         R reference: as(sample_data(x), "data.frame")
         """
-        return cast(pd.DataFrame, self._df.copy())
+        return self._df.copy()
 
     def copy(self) -> SampleData:
         """Return a deep copy of this SampleData."""

@@ -5,14 +5,17 @@ R reference: phyloseq::ordinate(physeq, method, distance, formula, ...)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import _otu_samples_rows
 
 if TYPE_CHECKING:
+    from skbio.stats.ordination import OrdinationResults
+
     from pyloseq._phyloseq import Phyloseq
 
 _SUPPORTED_METHODS = {
@@ -25,6 +28,8 @@ _SUPPORTED_METHODS = {
     "DPCoA",  # Double Principal Coordinates Analysis
     "DCA",  # Detrended Correspondence Analysis (not implemented)
 }
+# Pre-computed for O(1) lookup after upper-casing the caller's method string
+_SUPPORTED_METHODS_UPPER = {s.upper() for s in _SUPPORTED_METHODS}
 
 
 def ordinate(
@@ -33,7 +38,7 @@ def ordinate(
     distance: str | Any = "bray",
     formula: str | None = None,
     **kwargs: Any,
-) -> Any:
+) -> OrdinationResults:
     """Perform multivariate ordination on a Phyloseq object.
 
     Parameters
@@ -61,7 +66,7 @@ def ordinate(
     """
     m = method.upper()
 
-    if m not in {s.upper() for s in _SUPPORTED_METHODS}:
+    if m not in _SUPPORTED_METHODS_UPPER:
         raise pyloseqValidationError(
             f"Unknown ordination method: '{method}'. Supported: {sorted(_SUPPORTED_METHODS)}"
         )
@@ -202,7 +207,7 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
         raise pyloseqValidationError(f"Formula terms not found in sample_data: {missing}")
     sub = sam_df[terms]
     # Dummy-encode categorical/object columns so RDA/CCA get numeric input
-    return cast(pd.DataFrame, pd.get_dummies(sub, drop_first=True).astype(float))
+    return pd.get_dummies(sub, drop_first=True).astype(float)
 
 
 def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
@@ -214,9 +219,7 @@ def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     x_df = _parse_formula(ps, formula)
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
 
     # Align to shared samples
     shared = otu_df.index.intersection(x_df.index)
@@ -232,9 +235,7 @@ def _rda(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     x_df = _parse_formula(ps, formula)
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T
+    otu_df = _otu_samples_rows(ps)
 
     shared = otu_df.index.intersection(x_df.index)
     return rda(otu_df.loc[shared], x_df.loc[shared], **kwargs)
@@ -265,7 +266,7 @@ def _cap(
 
     pcoa_result = _pcoa(ps, dm)
     # Use PCoA sample scores as Y
-    shared_ids = [i for i in pcoa_result.samples.index if i in x_df.index]
+    shared_ids = list(pcoa_result.samples.index.intersection(x_df.index))
     y = pcoa_result.samples.loc[shared_ids].astype(float)
     x = x_df.loc[shared_ids].astype(float)
 
@@ -290,9 +291,7 @@ def _dpcoa_ordinate(ps: Phyloseq, **kwargs: Any) -> Any:
     tree_node = ps.phy_tree._tree
     dm_species = tree_node.tip_tip_distances()
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T
+    otu_df = _otu_samples_rows(ps)
 
     common = [t for t in dm_species.ids if t in otu_df.columns]
     otu_df = otu_df[common]

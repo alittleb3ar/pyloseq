@@ -138,7 +138,7 @@ class PhyTree:
         # Fast early-exit on tip sets and total branch length before full Newick compare
         if set(self.tip_names) != set(other.tip_names):
             return False
-        if not abs(self.total_branch_length - other.total_branch_length) < 1e-10:
+        if abs(self.total_branch_length - other.total_branch_length) >= 1e-10:
             return False
         return self.to_newick() == other.to_newick()
 

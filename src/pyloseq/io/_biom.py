@@ -13,6 +13,8 @@ from typing import Any
 import pandas as pd
 import scipy.sparse as sp
 
+from pyloseq._otu_table import _SPARSE_DENSITY_THRESHOLD
+
 _DEFAULT_RANKS = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
 
 TaxonomyParser = str | Callable[[Any], dict[str, str]] | None
@@ -33,6 +35,16 @@ def _parse_taxonomy_entry(value: Any, mode: TaxonomyParser) -> dict[str, str]:
     n = len(parts)
     ranks = _DEFAULT_RANKS[:n] if n <= len(_DEFAULT_RANKS) else [f"Level{i + 1}" for i in range(n)]
     return dict(zip(ranks, parts, strict=False))
+
+
+def _extract_metadata_dict(table: Any, ids: list[str], axis: str) -> dict[str, dict[str, Any]]:
+    """Return a {id: metadata_dict} mapping for the given BIOM table axis."""
+    rows: dict[str, dict[str, Any]] = {}
+    for item_id in ids:
+        meta = table.metadata(item_id, axis=axis)
+        if meta:
+            rows[item_id] = dict(meta)
+    return rows
 
 
 def read_biom(
@@ -64,14 +76,14 @@ def read_biom(
 
     # ---- OTU table -------------------------------------------------------
     # biom.Table.matrix_data is a csc_matrix; to_dataframe gives dense.
-    # Preserve sparsity if density < 50 %.
+    # Preserve sparsity if density < _SPARSE_DENSITY_THRESHOLD.
     mat: sp.csc_matrix = table.matrix_data
     taxa_ids = list(table.ids(axis="observation"))
     sample_ids = list(table.ids(axis="sample"))
     nelem = mat.shape[0] * mat.shape[1]
     density = mat.nnz / nelem if nelem > 0 else 1.0
 
-    if density < 0.5:
+    if density < _SPARSE_DENSITY_THRESHOLD:
         otu_data: sp.spmatrix | pd.DataFrame = mat.tocsr()
         otu = OtuTable(otu_data, taxa_are_rows=True)
         otu.taxa_names = pd.Index(taxa_ids)
@@ -82,11 +94,7 @@ def read_biom(
 
     # ---- Sample metadata -------------------------------------------------
     sam = None
-    sam_rows: dict[str, dict[str, Any]] = {}
-    for sid in sample_ids:
-        meta = table.metadata(sid, axis="sample")
-        if meta:
-            sam_rows[sid] = dict(meta)
+    sam_rows = _extract_metadata_dict(table, sample_ids, axis="sample")
     if sam_rows:
         sam = SampleData(pd.DataFrame.from_dict(sam_rows, orient="index"))
 

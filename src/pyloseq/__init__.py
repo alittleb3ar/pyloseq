@@ -1,4 +1,4 @@
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 from pyloseq._distances import distance, distance_method_list, unifrac
 from pyloseq._diversity import estimate_richness
@@ -15,8 +15,8 @@ from pyloseq._manipulation import (
     rarefy_even_depth,
     subset_samples,
     subset_taxa,
-    taxa_filter_mask,
     tax_glom,
+    taxa_filter_mask,
     tip_glom,
     transform_sample_counts,
 )
@@ -48,7 +48,10 @@ from pyloseq.plotting import (
     plot_richness,
 )
 
-__version__ = version("pyloseq")
+try:
+    __version__ = version("pyloseq")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 __all__ = [
     "__version__",

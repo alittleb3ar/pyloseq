@@ -6,9 +6,13 @@ R reference: phyloseq::phyloseq-class
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from skbio.stats.distance import DistanceMatrix
+    from skbio.stats.ordination import OrdinationResults
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._otu_table import OtuTable
@@ -50,6 +54,10 @@ class Phyloseq:
     # Component properties (with setters that re-validate)
     # ------------------------------------------------------------------
 
+    def _revalidate(self) -> None:
+        """Re-run the validator after a component is replaced via a setter."""
+        _validate(self, strict=False, warn_on_prune=True)
+
     @property
     def otu_table(self) -> OtuTable:
         """The OTU/feature abundance table.
@@ -61,7 +69,7 @@ class Phyloseq:
     @otu_table.setter
     def otu_table(self, value: OtuTable) -> None:
         self._otu = value
-        _validate(self, strict=False, warn_on_prune=True)
+        self._revalidate()
 
     @property
     def sample_data(self) -> SampleData | None:
@@ -74,7 +82,7 @@ class Phyloseq:
     @sample_data.setter
     def sample_data(self, value: SampleData | None) -> None:
         self._sam = value
-        _validate(self, strict=False, warn_on_prune=True)
+        self._revalidate()
 
     @property
     def tax_table(self) -> TaxTable | None:
@@ -87,7 +95,7 @@ class Phyloseq:
     @tax_table.setter
     def tax_table(self, value: TaxTable | None) -> None:
         self._tax = value
-        _validate(self, strict=False, warn_on_prune=True)
+        self._revalidate()
 
     @property
     def phy_tree(self) -> PhyTree | None:
@@ -100,7 +108,7 @@ class Phyloseq:
     @phy_tree.setter
     def phy_tree(self, value: PhyTree | None) -> None:
         self._tree = value
-        _validate(self, strict=False, warn_on_prune=True)
+        self._revalidate()
 
     @property
     def refseq(self) -> RefSeq | None:
@@ -113,7 +121,7 @@ class Phyloseq:
     @refseq.setter
     def refseq(self, value: RefSeq | None) -> None:
         self._refseq = value
-        _validate(self, strict=False, warn_on_prune=True)
+        self._revalidate()
 
     # ------------------------------------------------------------------
     # Accessors — mirror R phyloseq function-based API
@@ -229,7 +237,7 @@ class Phyloseq:
     # Convenience wrappers for analysis functions (Ticket 5.2)
     # ------------------------------------------------------------------
 
-    def distance(self, method: str = "bray", **kwargs: Any) -> Any:
+    def distance(self, method: str = "bray", **kwargs: Any) -> DistanceMatrix:
         """Compute a pairwise distance matrix.
 
         Thin wrapper around :func:`pyloseq.distance` — returns a
@@ -255,7 +263,7 @@ class Phyloseq:
         distance: str = "bray",
         formula: str | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> OrdinationResults:
         """Run multivariate ordination.
 
         Thin wrapper around :func:`pyloseq.ordinate` — returns an
@@ -314,9 +322,9 @@ class Phyloseq:
         obs = self._sam.to_frame() if self._sam is not None else pd.DataFrame(index=otu_df.index)
         var = self._tax.to_frame() if self._tax is not None else pd.DataFrame(index=otu_df.columns)
 
-        # Align indices
-        obs = obs.loc[otu_df.index] if len(obs) > 0 else obs.reindex(otu_df.index)
-        var = var.loc[otu_df.columns] if len(var) > 0 else var.reindex(otu_df.columns)
+        # Align indices — reindex handles both empty and non-empty DataFrames safely
+        obs = obs.reindex(otu_df.index)
+        var = var.reindex(otu_df.columns)
 
         uns: dict[str, Any] = {}
         if self._tree is not None:

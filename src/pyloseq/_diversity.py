@@ -6,12 +6,19 @@ R reference: phyloseq::estimate_richness(physeq, split, measures)
 from __future__ import annotations
 
 import warnings
-from typing import cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import _otu_samples_rows
+
+if TYPE_CHECKING:
+    from pyloseq._phyloseq import Phyloseq
+
+# Chao & Lee 1992: taxa with counts <= this threshold are considered "rare"
+_ACE_RARE_THRESHOLD: int = 10
 
 _ALL_MEASURES = [
     "Observed",
@@ -27,7 +34,7 @@ _ALL_MEASURES = [
 
 
 def estimate_richness(
-    ps: object,
+    ps: Phyloseq,
     measures: list[str] | None = None,
     split: bool = True,
 ) -> pd.DataFrame:
@@ -52,11 +59,6 @@ def estimate_richness(
 
     R reference: estimate_richness(physeq, split, measures)
     """
-    from pyloseq._phyloseq import Phyloseq  # noqa: PLC0415
-
-    if not isinstance(ps, Phyloseq):
-        raise TypeError(f"ps must be a Phyloseq, got {type(ps)!r}")
-
     if measures is None:
         measures = list(_ALL_MEASURES)
     else:
@@ -71,9 +73,7 @@ def estimate_richness(
             stacklevel=2,
         )
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
 
     if not split:
         pooled = otu_df.sum(axis=0)
@@ -84,7 +84,7 @@ def estimate_richness(
         }
 
     df = pd.DataFrame.from_dict(rows, orient="index")
-    return cast(pd.DataFrame, df[measures])
+    return df[measures]
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def _chao1(nonzero: np.ndarray) -> tuple[float, float]:
 def _ace(nonzero: np.ndarray) -> tuple[float, float]:
     """Abundance Coverage Estimator (Chao & Lee 1992; matches vegan::estimateR)."""
     s_obs = len(nonzero)
-    threshold = 10
+    threshold = _ACE_RARE_THRESHOLD
     rare = nonzero[nonzero <= threshold]
     abund = nonzero[nonzero > threshold]
 

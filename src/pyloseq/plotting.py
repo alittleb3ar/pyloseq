@@ -136,7 +136,7 @@ def plot_richness(
         theme,
     )
 
-    from pyloseq._diversity import estimate_richness  # noqa: PLC0415
+    from pyloseq._diversity import _ALL_MEASURES, estimate_richness  # noqa: PLC0415
 
     rich_df = estimate_richness(ps, measures=measures)
 
@@ -152,25 +152,7 @@ def plot_richness(
         x_col = x
 
     # Melt to long form for faceting
-    measure_cols = [
-        c
-        for c in rich_df.columns
-        if c
-        in (
-            measures
-            or [
-                "Observed",
-                "Chao1",
-                "se.chao1",
-                "ACE",
-                "se.ACE",
-                "Shannon",
-                "Simpson",
-                "InvSimpson",
-                "Fisher",
-            ]
-        )
-    ]
+    measure_cols = [c for c in rich_df.columns if c in (measures or _ALL_MEASURES)]
     id_vars = [c for c in rich_df.columns if c not in measure_cols]
     long = rich_df.reset_index().melt(
         id_vars=["index"] + [c for c in id_vars if c != "index"],
@@ -465,8 +447,9 @@ def plot_heatmap(
     # Ordinate to get sample ordering
     try:
         ord_result = ordinate(ps, method=method, distance=distance)
-        sample_order = list(ord_result.samples.sort_values("Axis.1").index)
-    except Exception as e:
+        first_axis = ord_result.samples.columns[0]
+        sample_order = list(ord_result.samples.sort_values(first_axis).index)
+    except (ValueError, RuntimeError, KeyError, pyloseqValidationError) as e:
         warnings.warn(
             f"Ordination failed ({e!r}); using original sample order.",
             stacklevel=2,

@@ -13,9 +13,15 @@ import numpy as np
 import pandas as pd
 
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import _otu_samples_rows
 
 if TYPE_CHECKING:
+    from skbio.stats.distance import DistanceMatrix
+
     from pyloseq._phyloseq import Phyloseq
+
+# Threshold for treating near-zero eigenvalues as positive in DPCoA
+_PCOA_EIGENVALUE_FLOOR: float = 1e-10
 
 # ---------------------------------------------------------------------------
 # Method catalogue
@@ -64,7 +70,7 @@ def distance(
     method: str,
     kind: str = "samples",
     **kwargs: Any,
-) -> Any:
+) -> DistanceMatrix:
     """Compute a pairwise distance (or dissimilarity) matrix.
 
     Parameters
@@ -121,7 +127,7 @@ def unifrac(
     weighted: bool = False,
     normalized: bool = True,
     n_jobs: int = 1,
-) -> Any:
+) -> DistanceMatrix:
     """Compute (weighted or unweighted) UniFrac distances.
 
     Parameters
@@ -149,9 +155,7 @@ def unifrac(
     tree_node = ps.phy_tree._tree
     tree_tips = set(ps.phy_tree.tip_names)
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
 
     # Restrict to taxa present in the tree
     taxa_in_tree = [t for t in otu_df.columns if t in tree_tips]
@@ -196,9 +200,7 @@ def _scipy_distance(
 
     scipy_metric, binarize = _SCIPY_METHODS[method]
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
 
     if kind == "taxa":
         otu_df = otu_df.T  # → taxa × samples
@@ -223,9 +225,7 @@ def _jsd_distance(ps: Phyloseq, kind: str = "samples") -> Any:
     from scipy.spatial.distance import jensenshannon, pdist, squareform
     from skbio.stats.distance import DistanceMatrix
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
     if kind == "taxa":
         otu_df = otu_df.T
 
@@ -283,7 +283,7 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
     idx = np.argsort(-vals)
     vals, vecs = vals[idx], vecs[:, idx]
 
-    pos = vals > 1e-10
+    pos = vals > _PCOA_EIGENVALUE_FLOOR
     n_pos = int(pos.sum())
     vals_pos = vals[:n_pos]
     coords = vecs[:, :n_pos] * np.sqrt(vals_pos)
@@ -319,9 +319,7 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
     tree_node = ps.phy_tree._tree
     dm_species = tree_node.tip_tip_distances()
 
-    otu_df = ps.otu_table.to_dataframe()
-    if ps.otu_table.taxa_are_rows:
-        otu_df = otu_df.T  # → samples × taxa
+    otu_df = _otu_samples_rows(ps)
 
     common = [t for t in dm_species.ids if t in otu_df.columns]
     otu_df = otu_df[common]

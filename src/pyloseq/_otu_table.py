@@ -5,11 +5,15 @@ R reference: phyloseq::otu_table(object)
 
 from __future__ import annotations
 
-from typing import Any, Union, cast
+from typing import Any, Union
 
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+
+# Matrices with density below this threshold are stored as CSR sparse matrices;
+# denser inputs are stored as dense DataFrames.
+_SPARSE_DENSITY_THRESHOLD: float = 0.5
 
 
 class OtuTable:
@@ -52,10 +56,9 @@ class OtuTable:
             col_idx = pd.RangeIndex(data.shape[1])
             is_sparse_input = False
         elif sp.issparse(data):
-            sparse_data = cast(sp.spmatrix, data)
-            raw = sparse_data
-            row_idx = pd.RangeIndex(sparse_data.shape[0])
-            col_idx = pd.RangeIndex(sparse_data.shape[1])
+            raw = data
+            row_idx = pd.RangeIndex(data.shape[0])  # type: ignore[union-attr]
+            col_idx = pd.RangeIndex(data.shape[1])  # type: ignore[union-attr]
             is_sparse_input = True
         elif isinstance(data, list):
             arr = np.array(data, dtype=float)
@@ -85,7 +88,7 @@ class OtuTable:
         self._df: pd.DataFrame | None = None
         self._sparse: sp.csr_matrix | None = None
 
-        if density < 0.5 or is_sparse_input:
+        if density < _SPARSE_DENSITY_THRESHOLD or is_sparse_input:
             csr: sp.csr_matrix = (
                 raw.tocsr() if sp.issparse(raw) else sp.csr_matrix(np.asarray(raw))  # type: ignore[union-attr]
             )
@@ -105,8 +108,9 @@ class OtuTable:
     def _to_numpy(self) -> np.ndarray:
         if self._df is not None:
             return self._df.values
-        assert self._sparse is not None
-        return cast(np.ndarray, self._sparse.toarray())
+        if self._sparse is None:
+            raise RuntimeError("OtuTable has neither dense nor sparse data")
+        return self._sparse.toarray()
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return the abundance matrix as a ``pd.DataFrame`` in current orientation.
@@ -115,7 +119,8 @@ class OtuTable:
         """
         if self._df is not None:
             return self._df
-        assert self._sparse is not None
+        if self._sparse is None:
+            raise RuntimeError("OtuTable has neither dense nor sparse data")
         return pd.DataFrame(
             self._sparse.toarray(),
             index=self._row_index,
@@ -138,7 +143,8 @@ class OtuTable:
         if self._df is not None:
             self._df = self._df.T
         else:
-            assert self._sparse is not None
+            if self._sparse is None:
+                raise RuntimeError("OtuTable has neither dense nor sparse data")
             self._sparse = self._sparse.T.tocsr()
         self._row_index, self._col_index = self._col_index, self._row_index
         self._taxa_are_rows = value
