@@ -135,7 +135,11 @@ class PhyTree:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PhyTree):
             return NotImplemented
-        # Compare via Newick — sufficient for structural equality
+        # Fast early-exit on tip sets and total branch length before full Newick compare
+        if set(self.tip_names) != set(other.tip_names):
+            return False
+        if not abs(self.total_branch_length - other.total_branch_length) < 1e-10:
+            return False
         return self.to_newick() == other.to_newick()
 
     def copy(self) -> PhyTree:

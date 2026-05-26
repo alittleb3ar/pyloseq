@@ -5,6 +5,7 @@ R reference: phyloseq::estimate_richness(physeq, split, measures)
 
 from __future__ import annotations
 
+import warnings
 from typing import cast
 
 import numpy as np
@@ -62,6 +63,13 @@ def estimate_richness(
         bad = [m for m in measures if m not in _ALL_MEASURES]
         if bad:
             raise pyloseqValidationError(f"Unknown measure(s): {bad}. Choose from: {_ALL_MEASURES}")
+
+    if "se.ACE" in measures:
+        warnings.warn(
+            "se.ACE is not implemented and will always be NaN. Use ACE for the point estimate.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     otu_df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
@@ -201,5 +209,5 @@ def _fisher_alpha(n: int, s_obs: int) -> float:
         # Upper bound: alpha * ln(n/alpha) ≈ s_obs  →  alpha ≈ s_obs / ln(n)
         upper = max(float(n) * 10, float(s_obs) * 100)
         return float(brentq(eq, 1e-8, upper, xtol=1e-12, rtol=1e-12))
-    except Exception:
+    except ValueError:
         return float("nan")

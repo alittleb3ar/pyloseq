@@ -5,6 +5,7 @@ R reference: phyloseq::phyloseq-class
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import pandas as pd
@@ -60,7 +61,7 @@ class Phyloseq:
     @otu_table.setter
     def otu_table(self, value: OtuTable) -> None:
         self._otu = value
-        _validate(self, strict=False)
+        _validate(self, strict=False, warn_on_prune=True)
 
     @property
     def sample_data(self) -> SampleData | None:
@@ -73,7 +74,7 @@ class Phyloseq:
     @sample_data.setter
     def sample_data(self, value: SampleData | None) -> None:
         self._sam = value
-        _validate(self, strict=False)
+        _validate(self, strict=False, warn_on_prune=True)
 
     @property
     def tax_table(self) -> TaxTable | None:
@@ -86,7 +87,7 @@ class Phyloseq:
     @tax_table.setter
     def tax_table(self, value: TaxTable | None) -> None:
         self._tax = value
-        _validate(self, strict=False)
+        _validate(self, strict=False, warn_on_prune=True)
 
     @property
     def phy_tree(self) -> PhyTree | None:
@@ -99,7 +100,7 @@ class Phyloseq:
     @phy_tree.setter
     def phy_tree(self, value: PhyTree | None) -> None:
         self._tree = value
-        _validate(self, strict=False)
+        _validate(self, strict=False, warn_on_prune=True)
 
     @property
     def refseq(self) -> RefSeq | None:
@@ -112,7 +113,7 @@ class Phyloseq:
     @refseq.setter
     def refseq(self, value: RefSeq | None) -> None:
         self._refseq = value
-        _validate(self, strict=False)
+        _validate(self, strict=False, warn_on_prune=True)
 
     # ------------------------------------------------------------------
     # Accessors — mirror R phyloseq function-based API
@@ -392,15 +393,15 @@ class Phyloseq:
 # ------------------------------------------------------------------
 
 
-def _validate(ps: Phyloseq, strict: bool) -> None:
+def _validate(ps: Phyloseq, strict: bool, warn_on_prune: bool = False) -> None:
     """Run the full component-consistency validator suite.
 
     Checks (in order):
     1. OtuTable is present
-    2. Taxa-name intersection across all present components is non-empty
+    2. Taxa-name intersection across otu_table, tax_table, and refseq is non-empty
+       (phy_tree is intentionally excluded — it is pruned TO the OTU table, not vice versa)
     3. Sample-name intersection between OtuTable and SampleData is non-empty
-    4. Tree tips are aligned with taxa names (prune or raise)
-    5. RefSeq names are aligned with taxa names (prune or raise)
+    4. Prune all components to the intersection (or raise in strict mode)
 
     R reference: validObject(phyloseq(...))
     """
@@ -410,12 +411,11 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
 
     otu_taxa = set(ps._otu.taxa_names)
 
-    # Rule 2 — taxa-name intersection across all components must be non-empty
+    # Rule 2 — taxa-name intersection across otu_table, tax_table, refseq
+    # phy_tree is NOT included: a tree with extra/fewer tips is pruned to match the OTU table
     components_taxa: list[set[str]] = [otu_taxa]
     if ps._tax is not None:
         components_taxa.append(set(ps._tax.names))
-    if ps._tree is not None:
-        components_taxa.append(set(ps._tree.tip_names))
     if ps._refseq is not None:
         components_taxa.append(set(ps._refseq.names))
 
@@ -426,16 +426,12 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
     if len(taxa_intersection) == 0 and len(otu_taxa) > 0 and len(components_taxa) > 1:
         raise pyloseqValidationError("Component taxa/OTU names do not match. Try taxa_names()")
 
-    # Rule 3 — sample-name intersection between OtuTable and SampleData
-    if ps._sam is not None:
-        otu_samples = set(ps._otu.sample_names)
-        sam_samples = set(ps._sam.names)
-        sample_intersection = otu_samples & sam_samples
-        if len(sample_intersection) == 0:
-            raise pyloseqValidationError("Component sample names do not match. Try sample_names()")
-
-    # Rules 4 & 5 — prune to intersection (or raise in strict mode)
-    if len(taxa_intersection) < len(otu_taxa):
+    # Rules 3 & 4 — prune to intersection (or raise in strict mode)
+    # Pruning may affect the OTU table (taxa_intersection < otu_taxa) OR other
+    # components (e.g. tax_table has taxa not in the new smaller OTU table).
+    max_component_size = max(len(s) for s in components_taxa)
+    any_pruning_needed = len(taxa_intersection) < max_component_size
+    if any_pruning_needed:
         if strict:
             only_otu = otu_taxa - taxa_intersection
             raise pyloseqValidationError(
@@ -443,17 +439,37 @@ def _validate(ps: Phyloseq, strict: bool) -> None:
                 f"{len(only_otu)} taxa present only in otu_table. "
                 "Try taxa_names()"
             )
-        # Prune silently
+        if warn_on_prune:
+            n_drop = max_component_size - len(taxa_intersection)
+            warnings.warn(
+                f"Assigning new component pruned {n_drop} taxa from other components.",
+                stacklevel=4,
+            )
         _prune_to_taxa(ps, sorted(taxa_intersection))
+    elif ps._tree is not None:
+        # Even when no OTU/tax/refseq pruning is needed, the tree may have
+        # extra tips that are not in the OTU table — prune it unconditionally.
+        _tip_set = set(ps._tree.tip_names)
+        tree_keep = [t for t in taxa_intersection if t in _tip_set]
+        if len(tree_keep) < len(_tip_set):
+            ps._tree = ps._tree.prune(tree_keep) if len(tree_keep) >= 2 else None
 
     if ps._sam is not None:
         otu_samples = set(ps._otu.sample_names)
         sam_samples = set(ps._sam.names)
         sample_intersection = otu_samples & sam_samples
+        if len(sample_intersection) == 0:
+            raise pyloseqValidationError("Component sample names do not match. Try sample_names()")
         if len(sample_intersection) < len(otu_samples):
             if strict:
                 raise pyloseqValidationError(
                     "Component sample names do not match. Try sample_names()"
+                )
+            if warn_on_prune:
+                n_drop = len(otu_samples) - len(sample_intersection)
+                warnings.warn(
+                    f"Assigning new component pruned {n_drop} samples from other components.",
+                    stacklevel=4,
                 )
             _prune_to_samples(ps, sorted(sample_intersection))
 

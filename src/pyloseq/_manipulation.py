@@ -19,14 +19,63 @@ from pyloseq._otu_table import OtuTable
 from pyloseq._refseq import RefSeq
 from pyloseq._sample_data import SampleData
 from pyloseq._tax_table import TaxTable
+from pyloseq._tree import PhyTree
 
 if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
 
 
+class _Unset:
+    """Sentinel — means "copy this component from the source Phyloseq"."""
+
+
+_UNSET = _Unset()
+
+
+def _rebuild_ps(
+    ps: Phyloseq,
+    otu: OtuTable,
+    *,
+    sam: SampleData | None | _Unset = _UNSET,
+    tax: TaxTable | None | _Unset = _UNSET,
+    tree: PhyTree | None | _Unset = _UNSET,
+    refseq: RefSeq | None | _Unset = _UNSET,
+    metadata: dict[str, Any] | _Unset = _UNSET,
+) -> Phyloseq:
+    """Construct a new Phyloseq, copying unchanged components from *ps* by default."""
+    from pyloseq._phyloseq import Phyloseq as _Phyloseq  # noqa: PLC0415
+
+    return _Phyloseq(
+        otu=otu,
+        sam=(ps.sample_data.copy() if ps.sample_data is not None else None)
+        if isinstance(sam, _Unset)
+        else sam,
+        tax=(ps.tax_table.copy() if ps.tax_table is not None else None)
+        if isinstance(tax, _Unset)
+        else tax,
+        tree=(ps.phy_tree.copy() if ps.phy_tree is not None else None)
+        if isinstance(tree, _Unset)
+        else tree,
+        refseq=(ps.refseq.copy() if ps.refseq is not None else None)
+        if isinstance(refseq, _Unset)
+        else refseq,
+        metadata=dict(ps.metadata) if isinstance(metadata, _Unset) else metadata,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _filter_refseq(ps: Phyloseq, keep_taxa: list[str]) -> RefSeq | None:
+    """Return a RefSeq filtered to ``keep_taxa``, or ``None`` if ps has no refseq."""
+    if ps.refseq is None:
+        return None
+    import skbio  # noqa: PLC0415
+
+    new_seqs: dict[str, skbio.DNA] = {k: ps.refseq[k] for k in keep_taxa if k in ps.refseq.names}
+    return RefSeq(new_seqs) if new_seqs else None
 
 
 def _ps_copy(ps: Phyloseq) -> Phyloseq:
@@ -71,44 +120,24 @@ def prune_taxa(
 
     R reference: prune_taxa(taxa, x)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     taxa_set = set(ps.taxa_names)
     keep = [n for n in names if n in taxa_set]
     keep_idx = pd.Index(keep)
 
     df = _otu_taxa_rows(ps)
-    new_otu_df = df.reindex(keep_idx)
-    new_otu = OtuTable(new_otu_df, taxa_are_rows=True)
+    new_otu = OtuTable(df.reindex(keep_idx), taxa_are_rows=True)
 
     new_tax = None
     if ps.tax_table is not None:
-        tax_df = ps.tax_table.to_frame()
-        new_tax = TaxTable(tax_df.reindex(keep_idx))
+        new_tax = TaxTable(ps.tax_table.to_frame().reindex(keep_idx))
 
     new_tree = None
     if ps.phy_tree is not None:
-        _tip_set = set(ps.phy_tree.tip_names)
-        tree_keep = [t for t in keep if t in _tip_set]
+        tree_keep = [t for t in keep if t in set(ps.phy_tree.tip_names)]
         if len(tree_keep) >= 2:
             new_tree = ps.phy_tree.prune(tree_keep)
 
-    new_refseq = None
-    if ps.refseq is not None:
-        import skbio  # noqa: PLC0415
-
-        new_seqs: dict[str, skbio.DNA] = {k: ps.refseq[k] for k in keep if k in ps.refseq.names}
-        if new_seqs:
-            new_refseq = RefSeq(new_seqs)
-
-    return _Phyloseq(
-        otu=new_otu,
-        sam=ps.sample_data.copy() if ps.sample_data is not None else None,
-        tax=new_tax,
-        tree=new_tree,
-        refseq=new_refseq,
-        metadata=dict(ps.metadata),
-    )
+    return _rebuild_ps(ps, new_otu, tax=new_tax, tree=new_tree, refseq=_filter_refseq(ps, keep))
 
 
 def prune_samples(
@@ -126,29 +155,19 @@ def prune_samples(
 
     R reference: prune_samples(samples, x)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     sample_set = set(ps.sample_names)
     keep = [n for n in names if n in sample_set]
     keep_idx = pd.Index(keep)
 
     df = _otu_taxa_rows(ps)
-    new_otu_df = df.reindex(columns=keep_idx)
-    new_otu = OtuTable(new_otu_df, taxa_are_rows=True)
+    new_otu = OtuTable(df.reindex(columns=keep_idx), taxa_are_rows=True)
 
     new_sam = None
     if ps.sample_data is not None:
         sam_df = ps.sample_data.to_frame()
         new_sam = SampleData(sam_df.reindex(keep_idx))
 
-    return _Phyloseq(
-        otu=new_otu,
-        sam=new_sam,
-        tax=ps.tax_table.copy() if ps.tax_table is not None else None,
-        tree=ps.phy_tree.copy() if ps.phy_tree is not None else None,
-        refseq=ps.refseq.copy() if ps.refseq is not None else None,
-        metadata=dict(ps.metadata),
-    )
+    return _rebuild_ps(ps, new_otu, sam=new_sam)
 
 
 # ---------------------------------------------------------------------------
@@ -259,9 +278,8 @@ def kOverA(k: int, A: float) -> Callable[[pd.Series], bool]:
 def filter_taxa(
     ps: Phyloseq,
     predicate: Callable[[pd.Series], bool],
-    prune: bool = True,
-) -> Phyloseq | pd.Series:
-    """Filter taxa using a per-taxon predicate.
+) -> Phyloseq:
+    """Return a new Phyloseq containing only taxa that satisfy ``predicate``.
 
     Parameters
     ----------
@@ -270,20 +288,36 @@ def filter_taxa(
     predicate:
         A callable accepting a ``pd.Series`` of abundances across all samples
         for one taxon, returning ``True`` to keep, ``False`` to drop.
-    prune:
-        If ``True`` (default), return a pruned ``Phyloseq``.
-        If ``False``, return a boolean ``pd.Series`` indexed by taxa name.
 
-    R reference: filter_taxa(physeq, flist, prune)
+    R reference: filter_taxa(physeq, flist, prune=TRUE)
     """
     df = _otu_taxa_rows(ps)
     keep_mask: pd.Series = df.apply(predicate, axis=1).astype(bool)
-
-    if not prune:
-        return keep_mask
-
     keep = list(keep_mask.index[keep_mask])
     return prune_taxa(keep, ps)
+
+
+def taxa_filter_mask(
+    ps: Phyloseq,
+    predicate: Callable[[pd.Series], bool],
+) -> pd.Series:
+    """Return a boolean ``pd.Series`` (indexed by taxa) for a per-taxon predicate.
+
+    Use this when you want to inspect the mask before pruning.
+    To obtain a pruned ``Phyloseq`` directly, use :func:`filter_taxa`.
+
+    Parameters
+    ----------
+    ps:
+        Source ``Phyloseq`` object.
+    predicate:
+        A callable accepting a ``pd.Series`` of abundances across all samples
+        for one taxon, returning ``True`` to keep, ``False`` to drop.
+
+    R reference: filter_taxa(physeq, flist, prune=FALSE)
+    """
+    df = _otu_taxa_rows(ps)
+    return cast(pd.Series, df.apply(predicate, axis=1).astype(bool))
 
 
 # ---------------------------------------------------------------------------
@@ -311,20 +345,9 @@ def transform_sample_counts(
 
     R reference: transform_sample_counts(physeq, function(x) x / sum(x))
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     df = _otu_taxa_rows(ps)
-    new_df = df.apply(fn, axis=0)  # apply column-wise (each column = one sample)
-
-    new_otu = OtuTable(new_df, taxa_are_rows=True)
-    return _Phyloseq(
-        otu=new_otu,
-        sam=ps.sample_data.copy() if ps.sample_data is not None else None,
-        tax=ps.tax_table.copy() if ps.tax_table is not None else None,
-        tree=ps.phy_tree.copy() if ps.phy_tree is not None else None,
-        refseq=ps.refseq.copy() if ps.refseq is not None else None,
-        metadata=dict(ps.metadata),
-    )
+    new_otu = OtuTable(df.apply(fn, axis=0), taxa_are_rows=True)
+    return _rebuild_ps(ps, new_otu)
 
 
 # ---------------------------------------------------------------------------
@@ -364,8 +387,6 @@ def rarefy_even_depth(
 
     R reference: rarefy_even_depth(physeq, sample.size, rngseed, replace, trimOTUs, verbose)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     if compat is not None and compat != "r-vegan":
         raise ValueError(f"Unknown compat mode: {compat!r}. Use 'r-vegan' or None.")
 
@@ -439,14 +460,8 @@ def rarefy_even_depth(
         if len(tree_keep) >= 2:
             new_tree = ps.phy_tree.prune(tree_keep)
 
-    return _Phyloseq(
-        otu=new_otu,
-        sam=new_sam,
-        tax=new_tax,
-        tree=new_tree,
-        refseq=None,
-        metadata=dict(ps.metadata),
-    )
+    return _rebuild_ps(ps, new_otu, sam=new_sam, tax=new_tax, tree=new_tree,
+                       refseq=_filter_refseq(ps, surviving_taxa))
 
 
 # ---------------------------------------------------------------------------
@@ -475,8 +490,6 @@ def merge_taxa(
 
     R reference: merge_taxa(x, eqtaxa, archetype)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     df = _otu_taxa_rows(ps)
     present = [t for t in eqtaxa if t in df.index]
     if len(present) < 2:
@@ -506,14 +519,9 @@ def merge_taxa(
         if len(tree_keep) >= 2:
             new_tree = ps.phy_tree.prune(tree_keep)
 
-    return _Phyloseq(
-        otu=new_otu,
-        sam=ps.sample_data.copy() if ps.sample_data is not None else None,
-        tax=new_tax,
-        tree=new_tree,
-        refseq=None,
-        metadata=dict(ps.metadata),
-    )
+    surviving_taxa_merge = list(new_otu_df.index)
+    return _rebuild_ps(ps, new_otu, tax=new_tax, tree=new_tree,
+                       refseq=_filter_refseq(ps, surviving_taxa_merge))
 
 
 # ---------------------------------------------------------------------------
@@ -546,8 +554,6 @@ def tax_glom(
 
     R reference: tax_glom(physeq, taxrank, NArm, bad_empty)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     if ps.tax_table is None:
         raise pyloseqValidationError("tax_glom requires a TaxTable")
 
@@ -617,14 +623,8 @@ def tax_glom(
         if len(tree_keep) >= 2:
             new_tree = ps.phy_tree.prune(tree_keep)
 
-    return _Phyloseq(
-        otu=new_otu,
-        sam=ps.sample_data.copy() if ps.sample_data is not None else None,
-        tax=new_tax,
-        tree=new_tree,
-        refseq=None,
-        metadata=dict(ps.metadata),
-    )
+    return _rebuild_ps(ps, new_otu, tax=new_tax, tree=new_tree,
+                       refseq=_filter_refseq(ps, archetypes))
 
 
 # ---------------------------------------------------------------------------
@@ -678,20 +678,53 @@ def tip_glom(
     Z = linkage(condensed, method=hcfun)
     labels = fcluster(Z, t=h, criterion="distance")
 
-    from collections import defaultdict
+    df = _otu_taxa_rows(ps)
+
+    # Build taxon → archetype mapping from cluster assignments
+    taxon_to_archetype: dict[str, str] = {}
+    for taxon, cluster_id in zip(filtered_ids, labels, strict=False):
+        taxon_to_archetype[taxon] = taxon  # placeholder; overwritten below for multi-member clusters
+
+    from collections import defaultdict  # noqa: PLC0415
 
     cluster_groups: dict[int, list[str]] = defaultdict(list)
     for taxon, cluster_id in zip(filtered_ids, labels, strict=False):
         cluster_groups[int(cluster_id)].append(taxon)
 
-    result = ps
-    for taxa in cluster_groups.values():
-        if len(taxa) > 1:
-            present = [t for t in taxa if t in set(result.taxa_names)]
-            if len(present) > 1:
-                result = merge_taxa(result, present)
+    for taxa_in_cluster in cluster_groups.values():
+        present = [t for t in taxa_in_cluster if t in df.index]
+        if len(present) > 1:
+            archetype = str(df.loc[present].sum(axis=1).idxmax())
+            for t in present:
+                taxon_to_archetype[t] = archetype
 
-    return result
+    # Single-pass groupby-sum: assign archetype label and sum within each group
+    archetype_col = pd.Series(
+        {t: taxon_to_archetype.get(t, t) for t in df.index}, name="_archetype"
+    )
+    merged = df.copy()
+    merged["_archetype"] = archetype_col
+    new_otu_df = merged.groupby("_archetype", sort=False).sum()
+    new_otu_df.index.name = None
+
+    archetypes = list(new_otu_df.index)
+    new_otu = OtuTable(new_otu_df, taxa_are_rows=True)
+
+    new_tax = None
+    if ps.tax_table is not None:
+        tax_df = ps.tax_table.to_frame()
+        keep_tax = [t for t in archetypes if t in tax_df.index]
+        new_tax = TaxTable(tax_df.loc[keep_tax])
+
+    new_tree = None
+    if ps.phy_tree is not None:
+        tree_tips = set(ps.phy_tree.tip_names)
+        tree_keep = [t for t in archetypes if t in tree_tips]
+        if len(tree_keep) >= 2:
+            new_tree = ps.phy_tree.prune(tree_keep)
+
+    return _rebuild_ps(ps, new_otu, tax=new_tax, tree=new_tree,
+                       refseq=_filter_refseq(ps, archetypes))
 
 
 # ---------------------------------------------------------------------------
@@ -784,8 +817,6 @@ def merge_samples(
 
     R reference: merge_samples(x, group, fun)
     """
-    from pyloseq._phyloseq import Phyloseq as _Phyloseq
-
     if ps.sample_data is None:
         raise pyloseqValidationError("merge_samples requires sample_data")
 
@@ -824,14 +855,7 @@ def merge_samples(
     new_otu = OtuTable(new_otu_df, taxa_are_rows=True)
     new_sam = SampleData(new_sam_df)
 
-    return _Phyloseq(
-        otu=new_otu,
-        sam=new_sam,
-        tax=ps.tax_table.copy() if ps.tax_table is not None else None,
-        tree=ps.phy_tree.copy() if ps.phy_tree is not None else None,
-        refseq=None,
-        metadata=dict(ps.metadata),
-    )
+    return _rebuild_ps(ps, new_otu, sam=new_sam)
 
 
 # ---------------------------------------------------------------------------

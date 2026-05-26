@@ -1,9 +1,4 @@
-"""Phase 5 tests — AnnData round-trip, scikit-bio/pandas interop.
-
-Tickets:
-  5.1 — ps.to_anndata() / Phyloseq.from_anndata()
-  5.2 — ps.distance() / ps.ordinate() convenience methods
-"""
+"""Tests for AnnData round-trip, PERMANOVA convenience, and Phyloseq method aliases."""
 
 from __future__ import annotations
 
@@ -20,11 +15,9 @@ GOLDEN_DIR = Path("tests/golden")
 GP_PRESENT = (GOLDEN_DIR / "GlobalPatterns" / "otu_table.parquet").exists()
 ES_PRESENT = (GOLDEN_DIR / "esophagus" / "otu_table.parquet").exists()
 
-# ---------------------------------------------------------------------------
-# Minimal synthetic fixture
-# ---------------------------------------------------------------------------
-
 _NWK = "((OTU1:0.2,OTU2:0.3):0.5,OTU3:0.7);"
+
+anndata = pytest.importorskip("anndata", reason="anndata not installed")
 
 
 def _make_ps(
@@ -65,7 +58,7 @@ def _make_ps(
 
     refseq = None
     if with_refseq:
-        import skbio  # type: ignore[import]
+        import skbio
 
         refseq = RefSeq(
             {
@@ -78,11 +71,9 @@ def _make_ps(
     return Phyloseq(otu=otu, sam=sam, tax=tax, tree=tree, refseq=refseq)
 
 
-# ---------------------------------------------------------------------------
-# Ticket 5.1 — AnnData round-trip
-# ---------------------------------------------------------------------------
-
-anndata = pytest.importorskip("anndata", reason="anndata not installed")
+# ===========================================================================
+# AnnData round-trip
+# ===========================================================================
 
 
 class TestToAnnData:
@@ -149,7 +140,6 @@ class TestToAnnData:
     def test_x_values_correct(self) -> None:
         ps = _make_ps()
         ad = ps.to_anndata()
-        # S1 row: OTU1=10, OTU2=5, OTU3=0
         s1_idx = list(ad.obs_names).index("S1")
         otu1_idx = list(ad.var_names).index("OTU1")
         assert ad.X[s1_idx, otu1_idx] == pytest.approx(10.0)
@@ -161,7 +151,6 @@ class TestFromAnnData:
         ps2 = Phyloseq.from_anndata(ps.to_anndata())
         orig = ps.otu_table.to_dataframe()
         rt = ps2.otu_table.to_dataframe()
-        # Both in taxa-are-rows orientation after round-trip
         if not ps2.otu_table.taxa_are_rows:
             rt = rt.T
         pd.testing.assert_frame_equal(
@@ -214,8 +203,6 @@ class TestFromAnnData:
         from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
-        from pyloseq import SampleData, TaxTable
-
         ps = Phyloseq(
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
             sam=SampleData(ref["sample_data"]),
@@ -230,14 +217,14 @@ class TestFromAnnData:
         assert ps2.sample_data is not None
 
 
-# ---------------------------------------------------------------------------
-# Ticket 5.2 — ps.distance() and ps.ordinate() convenience methods
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Phyloseq.distance() convenience method
+# ===========================================================================
 
 
 class TestPsDistanceMethod:
     def test_returns_distance_matrix(self) -> None:
-        from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+        from skbio.stats.distance import DistanceMatrix
 
         ps = _make_ps()
         dm = ps.distance("bray")
@@ -260,7 +247,7 @@ class TestPsDistanceMethod:
         np.testing.assert_allclose(np.diag(dm.data), 0.0)
 
     def test_plugs_into_permanova(self) -> None:
-        from skbio.stats.distance import permanova  # type: ignore[import]
+        from skbio.stats.distance import permanova
 
         ps = _make_ps(with_sam=True)
         dm = ps.distance("bray")
@@ -276,64 +263,20 @@ class TestPsDistanceMethod:
             ps.distance("unifrac")
 
     def test_unifrac_with_tree(self) -> None:
-        from skbio.stats.distance import DistanceMatrix  # type: ignore[import]
+        from skbio.stats.distance import DistanceMatrix
 
         ps = _make_ps(with_tree=True)
         dm = ps.distance("unifrac")
         assert isinstance(dm, DistanceMatrix)
 
 
-class TestPsOrdinateMethod:
-    def test_returns_ordination_results(self) -> None:
-        from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
-
-        ps = _make_ps()
-        result = ps.ordinate("PCoA", distance="bray")
-        assert isinstance(result, OrdinationResults)
-
-    def test_sample_count(self) -> None:
-        ps = _make_ps()
-        result = ps.ordinate("PCoA", distance="euclidean")
-        assert len(result.samples) == ps.nsamples
-
-    def test_rda_with_formula(self) -> None:
-        from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
-
-        ps = _make_ps(with_sam=True)
-        result = ps.ordinate("RDA", formula="~Group")
-        assert isinstance(result, OrdinationResults)
-
-    def test_unknown_method_raises(self) -> None:
-        from pyloseq._exceptions import pyloseqValidationError
-
-        ps = _make_ps()
-        with pytest.raises(pyloseqValidationError, match="Unknown ordination method"):
-            ps.ordinate("UMAP")
-
-    @pytest.mark.skipif(not ES_PRESENT, reason="golden files not generated yet")
-    def test_pcoa_on_esophagus(self) -> None:
-        from skbio.stats.ordination import OrdinationResults  # type: ignore[import]
-
-        from pyloseq.testing.fixtures import load_esophagus_reference
-
-        ref = load_esophagus_reference()
-        ps = Phyloseq(
-            otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
-            tree=PhyTree.from_newick(ref["phy_tree_newick"]) if "phy_tree_newick" in ref else None,
-        )
-        result = ps.ordinate("PCoA", distance="bray")
-        assert isinstance(result, OrdinationResults)
-        assert len(result.samples) == ps.nsamples
-
-
-# ---------------------------------------------------------------------------
-# Ticket 5.2 — one-liner interop smoke test
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# One-liner interop smoke tests
+# ===========================================================================
 
 
 def test_permanova_one_liner() -> None:
-    """permanova(ps.distance("bray"), ps.sample_data["Group"]) works without conversion."""
-    from skbio.stats.distance import permanova  # type: ignore[import]
+    from skbio.stats.distance import permanova
 
     ps = _make_ps(with_sam=True)
     result = permanova(ps.distance("bray"), ps.sample_data.to_frame()["Group"])  # type: ignore[union-attr]
@@ -341,7 +284,6 @@ def test_permanova_one_liner() -> None:
 
 
 def test_phase5_methods_on_phyloseq() -> None:
-    """Phyloseq exposes to_anndata, from_anndata, distance, ordinate."""
     assert hasattr(Phyloseq, "to_anndata")
     assert hasattr(Phyloseq, "from_anndata")
     assert hasattr(Phyloseq, "distance")

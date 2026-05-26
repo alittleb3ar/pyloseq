@@ -50,8 +50,8 @@ class RefSeq:
         return list(self._seqs.keys())
 
     def copy(self) -> RefSeq:
-        """Return a shallow copy of this RefSeq."""
-        return RefSeq(self._seqs.copy())
+        """Return a deep copy of this RefSeq."""
+        return RefSeq({k: skbio.DNA(str(v)) for k, v in self._seqs.items()})
 
     def __len__(self) -> int:
         return len(self._seqs)

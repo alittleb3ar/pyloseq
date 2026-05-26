@@ -10,6 +10,7 @@ R reference: phyloseq plot_bar, plot_richness, plot_ordination, plot_heatmap,
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -204,11 +205,12 @@ def plot_richness(
 def plot_ordination(
     ps: Phyloseq,
     ord: Any,
-    type: str = "samples",
+    kind: str = "samples",
     color: str | None = None,
     shape: str | None = None,
     label: str | None = None,
     title: str | None = None,
+    **kwargs: Any,
 ) -> Any:
     """Scatter plot of ordination results.
 
@@ -218,7 +220,7 @@ def plot_ordination(
         ``Phyloseq`` object.
     ord:
         ``skbio.stats.ordination.OrdinationResults`` from :func:`ordinate`.
-    type:
+    kind:
         One of ``"samples"``, ``"taxa"``, ``"biplot"``, ``"split"``,
         ``"scree"``.
     color:
@@ -236,6 +238,14 @@ def plot_ordination(
 
     R reference: plot_ordination(physeq, ordination, type, color, shape, label, title)
     """
+    if "type" in kwargs:
+        warnings.warn(
+            "The 'type' parameter is deprecated; use 'kind' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kind = kwargs.pop("type")
+
     from plotnine import (
         aes,
         geom_point,
@@ -246,10 +256,10 @@ def plot_ordination(
         ylab,
     )
 
-    if type == "scree":
+    if kind == "scree":
         return _plot_scree(ord, title=title)
 
-    if type in ("samples", "biplot"):
+    if kind in ("samples", "biplot"):
         plot_df = pd.DataFrame(
             ord.samples.values[:, :2], index=ord.samples.index, columns=["Axis.1", "Axis.2"]
         )
@@ -259,7 +269,7 @@ def plot_ordination(
             sam_df = ps.sample_data.to_frame()
             plot_df = plot_df.join(sam_df, how="left")
 
-        if type == "biplot" and ord.features is not None:
+        if kind == "biplot" and ord.features is not None:
             feat_df = pd.DataFrame(
                 ord.features.values[:, :2],
                 index=ord.features.index,
@@ -271,7 +281,7 @@ def plot_ordination(
             plot_df["_type"] = "samples"
             plot_df = pd.concat([plot_df, feat_df], axis=0)
 
-    elif type == "taxa":
+    elif kind == "taxa":
         if ord.features is None:
             raise pyloseqValidationError(
                 "Ordination result has no 'features' (taxa) scores. "
@@ -285,13 +295,13 @@ def plot_ordination(
         if ps.tax_table is not None:
             plot_df = plot_df.join(ps.tax_table.to_frame(), how="left")
 
-    elif type == "split":
+    elif kind == "split":
         # Two panels: samples and taxa side by side
         return _plot_split(ps, ord, color=color, shape=shape)
 
     else:
         raise pyloseqValidationError(
-            f"Unknown plot_ordination type: '{type}'. "
+            f"Unknown plot_ordination kind: '{kind}'. "
             "Use: 'samples', 'taxa', 'biplot', 'split', 'scree'."
         )
 
@@ -456,7 +466,11 @@ def plot_heatmap(
     try:
         ord_result = ordinate(ps, method=method, distance=distance)
         sample_order = list(ord_result.samples.sort_values("Axis.1").index)
-    except Exception:
+    except Exception as e:
+        warnings.warn(
+            f"Ordination failed ({e!r}); using original sample order.",
+            stacklevel=2,
+        )
         sample_order = list(ps.sample_names)
 
     long_df = psmelt(ps)
@@ -490,10 +504,11 @@ def plot_heatmap(
 
 def make_network(
     ps: Phyloseq,
-    type: str = "samples",
+    kind: str = "samples",
     distance: str = "jaccard",
     max_dist: float = 0.4,
     keep_isolates: bool = False,
+    **kwargs: Any,
 ) -> Any:
     """Build a sample (or taxa) network based on a distance threshold.
 
@@ -501,7 +516,7 @@ def make_network(
     ----------
     ps:
         ``Phyloseq`` object.
-    type:
+    kind:
         ``"samples"`` (default) or ``"taxa"``.
     distance:
         Distance metric (see :func:`pyloseq.distance`).
@@ -523,9 +538,17 @@ def make_network(
             "make_network requires networkx. Install it with: pip install networkx"
         ) from e
 
+    if "type" in kwargs:
+        warnings.warn(
+            "The 'type' parameter is deprecated; use 'kind' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kind = kwargs.pop("type")
+
     from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
-    dm = _distance(ps, distance, type=type)
+    dm = _distance(ps, distance, kind=kind)
     ids = list(dm.ids)
     data = np.array(dm.data)
 
@@ -544,7 +567,7 @@ def make_network(
         g.remove_nodes_from(isolates)
 
     # Attach sample metadata as node attributes
-    if type == "samples" and ps.sample_data is not None:
+    if kind == "samples" and ps.sample_data is not None:
         sam_df = ps.sample_data.to_frame()
         for node in g.nodes:
             if node in sam_df.index:

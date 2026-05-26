@@ -108,8 +108,8 @@ def read_biom(
 
         with h5py.File(str(path), "r") as hf:
             extra = dict(hf.attrs.items())
-    except Exception:  # noqa: BLE001
-        pass  # v1 JSON or h5py unavailable — skip
+    except (ImportError, OSError):
+        pass  # h5py unavailable or not a valid HDF5 file
 
     return Phyloseq(otu=otu, sam=sam, tax=tax, metadata=extra if extra else {})
 

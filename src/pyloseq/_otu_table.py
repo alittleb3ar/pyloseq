@@ -31,7 +31,10 @@ class OtuTable:
         ----------
         data:
             Abundance matrix. Accepted types: ``pd.DataFrame``, ``np.ndarray``,
-            any ``scipy.sparse`` matrix, or a list-of-lists.
+            any ``scipy.sparse`` matrix, or a list-of-lists.  When a
+            ``scipy.sparse`` matrix is supplied directly, sparse storage is
+            always used regardless of matrix density (the 50 % density
+            threshold only applies to dense inputs).
         taxa_are_rows:
             If ``True`` (default), rows represent taxa and columns represent
             samples.

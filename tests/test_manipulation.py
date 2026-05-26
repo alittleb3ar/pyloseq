@@ -1,8 +1,4 @@
-"""Phase 3 — Data manipulation tests.
-
-All tests use programmatic fixtures built in tmp_path; golden-file
-comparisons are skipped when the golden directory is absent.
-"""
+"""Tests for data manipulation functions (subset, filter, transform, rarefy, glom, merge, melt)."""
 
 from __future__ import annotations
 
@@ -44,11 +40,6 @@ GP_SUBSET_CHLAM_PRESENT = (GP_GOLDEN / "subset_taxa_chlamydiae" / "otu_table.par
 ET_FILTER_PRESENT = (ET_GOLDEN / "filter_taxa_kOverA_5_2e-5" / "otu_table.parquet").exists()
 GP_TAXGLOM_PRESENT = (GP_GOLDEN / "tax_glom_Family" / "taxa_sums.parquet").exists()
 GP_MERGESAM_PRESENT = (GP_GOLDEN / "merge_samples_SampleType" / "sample_sums.parquet").exists()
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _make_ps(
@@ -99,7 +90,6 @@ def _make_ps(
 
 
 def _make_ps_with_tree() -> Phyloseq:
-    """Small 4-taxa PS with a star tree."""
     from io import StringIO
 
     import skbio.tree
@@ -122,9 +112,24 @@ def _make_ps_with_tree() -> Phyloseq:
     return Phyloseq(otu=otu, tree=PhyTree(tree_node))
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.2 — prune_taxa, prune_samples
-# ---------------------------------------------------------------------------
+def _make_ps_with_refseq() -> Phyloseq:
+    import skbio
+
+    from pyloseq import RefSeq
+
+    df = pd.DataFrame(
+        {"S1": [10.0, 5.0, 0.0], "S2": [3.0, 8.0, 2.0]},
+        index=["OTU1", "OTU2", "OTU3"],
+    )
+    rs = RefSeq(
+        {"OTU1": skbio.DNA("ACGT"), "OTU2": skbio.DNA("TTTT"), "OTU3": skbio.DNA("GCGC")}
+    )
+    return Phyloseq(otu=OtuTable(df, taxa_are_rows=True), refseq=rs)
+
+
+# ===========================================================================
+# prune_taxa, prune_samples
+# ===========================================================================
 
 
 class TestPruning:
@@ -171,9 +176,9 @@ class TestPruning:
         assert ps.nsamples == original_nsamples
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.1 — subset_samples, subset_taxa
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# subset_samples, subset_taxa
+# ===========================================================================
 
 
 class TestSubset:
@@ -195,7 +200,7 @@ class TestSubset:
     def test_subset_taxa_lambda(self) -> None:
         ps = _make_ps()
         ps2 = subset_taxa(ps, lambda t: t["Phylum"] == "Firmicutes")
-        assert ps2.ntaxa == 2  # OTU1 and OTU2 are Firmicutes
+        assert ps2.ntaxa == 2
         assert all(ps2.tax_table.to_frame()["Phylum"] == "Firmicutes")
 
     def test_subset_taxa_query_string(self) -> None:
@@ -215,7 +220,6 @@ class TestSubset:
 
     @pytest.mark.skipif(not GP_SUBSET_SOIL_PRESENT, reason="golden files not generated yet")
     def test_subset_samples_soil_matches_r(self) -> None:
-        """subset_samples(GP, SampleType == 'Soil') → 3 samples."""
         from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
@@ -227,7 +231,6 @@ class TestSubset:
         gp_soil = subset_samples(gp, 'SampleType == "Soil"')
         assert gp_soil.nsamples == 3
 
-        # Compare against golden
         golden_otu = pd.read_parquet(GP_GOLDEN / "subset_samples_soil" / "otu_table.parquet")
         if "__index__" in golden_otu.columns:
             golden_otu = golden_otu.set_index("__index__")
@@ -259,9 +262,9 @@ class TestSubset:
         assert gp_chlam.ntaxa == len(golden_otu)
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.3 — filter_taxa, kOverA
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# filter_taxa, kOverA
+# ===========================================================================
 
 
 class TestFilterTaxa:
@@ -272,29 +275,30 @@ class TestFilterTaxa:
 
     def test_filter_taxa_prune_true(self) -> None:
         ps = _make_ps(rng=np.random.default_rng(1))
-        ps2 = filter_taxa(ps, kOverA(1, 0.0), prune=True)
+        ps2 = filter_taxa(ps, kOverA(1, 0.0))
         assert isinstance(ps2, Phyloseq)
         assert ps2.ntaxa <= ps.ntaxa
 
     def test_filter_taxa_prune_false_returns_series(self) -> None:
+        from pyloseq import taxa_filter_mask
+
         ps = _make_ps()
-        mask = filter_taxa(ps, kOverA(1, 0.0), prune=False)
+        mask = taxa_filter_mask(ps, kOverA(1, 0.0))
         assert isinstance(mask, pd.Series)
         assert mask.index.equals(ps.taxa_names)
 
     def test_filter_taxa_all_pass(self) -> None:
         ps = _make_ps()
-        ps2 = filter_taxa(ps, lambda x: True, prune=True)
+        ps2 = filter_taxa(ps, lambda x: True)
         assert ps2.ntaxa == ps.ntaxa
 
     def test_filter_taxa_none_pass(self) -> None:
         ps = _make_ps()
-        ps2 = filter_taxa(ps, lambda x: False, prune=True)
+        ps2 = filter_taxa(ps, lambda x: False)
         assert ps2.ntaxa == 0
 
     @pytest.mark.skipif(not ET_FILTER_PRESENT, reason="golden files not generated yet")
     def test_filter_taxa_kOverA_matches_r_enterotype(self) -> None:
-        """filter_taxa(enterotype, kOverA(5, 2e-5)) → 416 taxa × 280 samples."""
         from pyloseq.testing.fixtures import load_enterotype_reference
 
         ref = load_enterotype_reference()
@@ -302,7 +306,7 @@ class TestFilterTaxa:
             otu=OtuTable(ref["otu_table"], taxa_are_rows=True),
             sam=SampleData(ref["sample_data"]),
         )
-        et2 = filter_taxa(et, kOverA(5, 2e-5), prune=True)
+        et2 = filter_taxa(et, kOverA(5, 2e-5))
 
         golden_otu = pd.read_parquet(ET_GOLDEN / "filter_taxa_kOverA_5_2e-5" / "otu_table.parquet")
         if "__index__" in golden_otu.columns:
@@ -312,9 +316,9 @@ class TestFilterTaxa:
         assert et2.nsamples == 280
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.4 — transform_sample_counts
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# transform_sample_counts
+# ===========================================================================
 
 
 class TestTransform:
@@ -347,9 +351,9 @@ class TestTransform:
         assert ps.taxa_sums().sum() == orig_sum
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.5 — rarefy_even_depth
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# rarefy_even_depth
+# ===========================================================================
 
 
 class TestRarefy:
@@ -406,25 +410,21 @@ class TestRarefy:
         assert ps.taxa_sums().sum() == orig
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.6 — tax_glom
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# tax_glom
+# ===========================================================================
 
 
 class TestTaxGlom:
     def test_glom_collapses_taxa(self) -> None:
         ps = _make_ps()
-        # Phylum has 4 distinct values: Firmicutes(2), Bacteroidetes(1),
-        # Proteobacteria(2), Chlamydiae(1) → 4 groups
         ps2 = tax_glom(ps, "Phylum")
         assert ps2.ntaxa == 4
 
     def test_glom_sums_abundances(self) -> None:
         ps = _make_ps()
         ps2 = tax_glom(ps, "Phylum")
-        # Total abundance must be preserved (na_rm may drop some)
         orig_total = ps.taxa_sums().sum()
-        # All taxa have non-NA Phylum so total should equal
         assert abs(ps2.taxa_sums().sum() - orig_total) < 1e-10
 
     def test_glom_at_genus_gives_more_groups(self) -> None:
@@ -458,7 +458,6 @@ class TestTaxGlom:
             tax=TaxTable(tax_df),
         )
         ps3 = tax_glom(ps2, "Phylum", na_rm=True)
-        # OTU1's Phylum="" should be dropped
         assert ps3.ntaxa < ps.ntaxa
 
     @pytest.mark.skipif(not GP_TAXGLOM_PRESENT, reason="golden files not generated yet")
@@ -478,7 +477,6 @@ class TestTaxGlom:
             golden_ts.index.name = None
 
         assert gp_fam.ntaxa == len(golden_ts)
-        # Total abundance must match (all taxa_sums sum to same value)
         np.testing.assert_allclose(
             gp_fam.taxa_sums().sum(),
             golden_ts["value"].sum(),
@@ -486,15 +484,14 @@ class TestTaxGlom:
         )
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.7 — tip_glom
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# tip_glom (merged from original + vectorization tests)
+# ===========================================================================
 
 
 class TestTipGlom:
     def test_tip_glom_reduces_taxa(self) -> None:
         ps = _make_ps_with_tree()
-        # Tree has OTU1+OTU2 close (dist=0.2), OTU3+OTU4 close (dist=0.3)
         ps2 = tip_glom(ps, h=0.25)
         assert ps2.ntaxa <= ps.ntaxa
 
@@ -510,14 +507,25 @@ class TestTipGlom:
 
     def test_tip_glom_zero_h_keeps_all(self) -> None:
         ps = _make_ps_with_tree()
-        # h=0 means no two tips are within distance 0, so no merging
         ps2 = tip_glom(ps, h=0.0)
         assert ps2.ntaxa == ps.ntaxa
 
+    def test_tip_glom_result_has_fewer_or_equal_taxa(self) -> None:
+        ps = _make_ps_with_tree()
+        ps2 = tip_glom(ps, h=0.5)
+        assert ps2.ntaxa <= ps.ntaxa
 
-# ---------------------------------------------------------------------------
-# Ticket 3.8 — merge_taxa, merge_phyloseq, merge_samples
-# ---------------------------------------------------------------------------
+    def test_tip_glom_abundance_conserved(self) -> None:
+        ps = _make_ps_with_tree()
+        total_before = ps.otu_table.to_dataframe().values.sum()
+        ps2 = tip_glom(ps, h=0.5)
+        total_after = ps2.otu_table.to_dataframe().values.sum()
+        np.testing.assert_allclose(total_before, total_after, rtol=1e-10)
+
+
+# ===========================================================================
+# merge_taxa, merge_phyloseq, merge_samples
+# ===========================================================================
 
 
 class TestMergeTaxa:
@@ -559,7 +567,6 @@ class TestMergeTaxa:
 class TestMergePhyloseq:
     def test_merge_two_disjoint_samples(self) -> None:
         ps1 = _make_ps(nsamples=2, with_sam=False, with_tax=False)
-        # Create a second with different sample names
         df2 = pd.DataFrame(
             {"S5": [1.0, 2.0], "S6": [3.0, 4.0]},
             index=["OTU1", "OTU2"],
@@ -597,14 +604,13 @@ class TestMergeSamples:
     def test_merge_collapses_to_groups(self) -> None:
         ps = _make_ps()
         ps2 = merge_samples(ps, "Group")
-        assert ps2.nsamples == 2  # Groups A and B
+        assert ps2.nsamples == 2
 
     def test_merge_sums_otu_abundances(self) -> None:
         ps = _make_ps()
         orig = ps.otu_table.to_dataframe()
         ps2 = merge_samples(ps, "Group")
         result = ps2.otu_table.to_dataframe()
-        # Group A = S1 + S2; Group B = S3 + S4
         for grp, samples in [("A", ["S1", "S2"]), ("B", ["S3", "S4"])]:
             if grp in result.columns:
                 np.testing.assert_allclose(
@@ -625,7 +631,6 @@ class TestMergeSamples:
 
     @pytest.mark.skipif(not GP_MERGESAM_PRESENT, reason="golden files not generated yet")
     def test_merge_samples_sampletype_matches_r(self) -> None:
-        """merge_samples(GP, 'SampleType') → 9 samples (one per SampleType)."""
         from pyloseq.testing.fixtures import load_global_patterns_reference
 
         ref = load_global_patterns_reference()
@@ -641,7 +646,6 @@ class TestMergeSamples:
             golden_ss.index.name = None
 
         assert gp2.nsamples == len(golden_ss)
-        # Total abundance must be conserved (summing doesn't lose reads)
         np.testing.assert_allclose(
             gp2.sample_sums().sum(),
             golden_ss["value"].sum(),
@@ -649,9 +653,9 @@ class TestMergeSamples:
         )
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.9 — psmelt
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# psmelt
+# ===========================================================================
 
 
 class TestPsmelt:
@@ -699,9 +703,9 @@ class TestPsmelt:
         assert "OTU" in long.columns
 
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # API surface check
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 
 def test_manipulation_functions_exported() -> None:
@@ -722,3 +726,79 @@ def test_manipulation_functions_exported() -> None:
         "psmelt",
     ]:
         assert hasattr(pyloseq, name), f"pyloseq.{name} not exported"
+
+
+# ===========================================================================
+# refseq preservation across manipulation functions
+# ===========================================================================
+
+
+class TestRefseqPreservation:
+    def test_rarefy_preserves_refseq(self) -> None:
+        ps = _make_ps_with_refseq()
+        ps2 = rarefy_even_depth(ps, sample_size=5, rng_seed=1, verbose=False)
+        assert ps2.refseq is not None
+
+    def test_tax_glom_preserves_refseq(self) -> None:
+        import skbio
+
+        from pyloseq import RefSeq
+
+        df = pd.DataFrame({"S1": [5.0, 3.0]}, index=["OTU1", "OTU2"])
+        tax_df = pd.DataFrame({"Phylum": ["Firmicutes", "Firmicutes"]}, index=["OTU1", "OTU2"])
+        rs = RefSeq({"OTU1": skbio.DNA("ACGT"), "OTU2": skbio.DNA("TTTT")})
+        ps = Phyloseq(otu=OtuTable(df, taxa_are_rows=True), tax=TaxTable(tax_df), refseq=rs)
+        ps2 = tax_glom(ps, "Phylum")
+        assert ps2.refseq is not None
+        assert len(ps2.refseq) == 1
+
+    def test_merge_taxa_preserves_refseq(self) -> None:
+        ps = _make_ps_with_refseq()
+        ps2 = merge_taxa(ps, ["OTU1", "OTU2"])
+        assert ps2.refseq is not None
+
+    def test_merge_samples_preserves_refseq(self) -> None:
+        import skbio
+
+        from pyloseq import RefSeq
+
+        df = pd.DataFrame({"S1": [5.0, 3.0], "S2": [2.0, 1.0]}, index=["OTU1", "OTU2"])
+        sam_df = pd.DataFrame({"Group": ["A", "A"]}, index=["S1", "S2"])
+        rs = RefSeq({"OTU1": skbio.DNA("ACGT"), "OTU2": skbio.DNA("TTTT")})
+        ps = Phyloseq(
+            otu=OtuTable(df, taxa_are_rows=True), sam=SampleData(sam_df), refseq=rs
+        )
+        ps2 = merge_samples(ps, "Group")
+        assert ps2.refseq is not None
+
+
+# ===========================================================================
+# filter_taxa / taxa_filter_mask split
+# ===========================================================================
+
+
+class TestFilterTaxaMask:
+    def test_filter_taxa_always_returns_phyloseq(self) -> None:
+        ps = _make_ps()
+        result = filter_taxa(ps, kOverA(1, 5))
+        assert isinstance(result, Phyloseq)
+
+    def test_taxa_filter_mask_returns_series(self) -> None:
+        from pyloseq import taxa_filter_mask
+
+        ps = _make_ps()
+        mask = taxa_filter_mask(ps, kOverA(1, 5))
+        assert isinstance(mask, pd.Series)
+        assert mask.dtype == bool
+
+    def test_filter_taxa_and_mask_consistent(self) -> None:
+        from pyloseq import taxa_filter_mask
+
+        ps = _make_ps()
+        pred = kOverA(1, 5)
+        filtered = filter_taxa(ps, pred)
+        mask = taxa_filter_mask(ps, pred)
+        assert set(filtered.taxa_names) == set(mask.index[mask])
+
+    def test_taxa_filter_mask_exported(self) -> None:
+        assert hasattr(pyloseq, "taxa_filter_mask")

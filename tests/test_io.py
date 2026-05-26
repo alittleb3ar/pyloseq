@@ -1,8 +1,4 @@
-"""Phase 2 tests: I/O readers and writers.
-
-All test fixtures are created programmatically in tmp_path — no binary
-files committed to the repo.
-"""
+"""Tests for I/O readers and writers (BIOM, QIIME 2, QIIME 1, mothur, CSV/TSV)."""
 
 from __future__ import annotations
 
@@ -16,10 +12,6 @@ import scipy.sparse as sp
 
 import pyloseq
 from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
-
-# ===========================================================================
-# Shared fixture factory
-# ===========================================================================
 
 
 def _make_ps(
@@ -67,7 +59,7 @@ def _make_ps(
 
 
 # ===========================================================================
-# Ticket 2.1 — BIOM v1 (JSON)
+# BIOM v1 (JSON)
 # ===========================================================================
 
 
@@ -116,7 +108,7 @@ class TestBiomV1:
 
 
 # ===========================================================================
-# Ticket 2.2 — BIOM v2 (HDF5)
+# BIOM v2 (HDF5)
 # ===========================================================================
 
 
@@ -150,11 +142,9 @@ class TestBiomV2:
         p = tmp_path / "attrs.biom"
         pyloseq.write_biom(ps, p, version="2.1")
         ps2 = pyloseq.read_biom(p)
-        # HDF5 attrs written by biom-format include creation-date, etc.
         assert isinstance(ps2.metadata, dict)
 
     def test_taxonomy_qiime_mode(self, tmp_path: Path) -> None:
-        """Taxonomy written as list round-trips through qiime parse mode."""
         ps = _make_ps(with_tax=True)
         p = tmp_path / "qiime_tax.biom"
         pyloseq.write_biom(ps, p, version="2.1")
@@ -175,12 +165,11 @@ class TestBiomV2:
 
 
 # ===========================================================================
-# Ticket 2.3 — QIIME 2 .qza
+# QIIME 2 .qza helpers
 # ===========================================================================
 
 
 def _make_feature_table_qza(tmp_path: Path, ps: Phyloseq) -> Path:
-    """Create a minimal FeatureTable[Frequency] .qza for testing."""
     import uuid as _uuid_mod
 
     import yaml
@@ -240,6 +229,11 @@ def _make_tree_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     return qza_path
 
 
+# ===========================================================================
+# QIIME 2 .qza
+# ===========================================================================
+
+
 class TestQza:
     def test_read_feature_table(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
@@ -266,7 +260,6 @@ class TestQza:
 
     def test_provenance_stashed_in_metadata(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
-        # Add a dummy provenance file
         import uuid as _uuid_mod
 
         import yaml
@@ -316,7 +309,7 @@ class TestQza:
 
 
 # ===========================================================================
-# Ticket 2.4 — QIIME 1
+# QIIME 1
 # ===========================================================================
 
 
@@ -385,7 +378,7 @@ class TestQiime1:
         ps2 = pyloseq.read_qiime(otu_path)
         orig = ps.otu_table.taxa_sums().sort_index()
         rt = ps2.otu_table.taxa_sums().sort_index()
-        np.testing.assert_allclose(orig.values, rt.values, atol=1.0)  # int round-trip
+        np.testing.assert_allclose(orig.values, rt.values, atol=1.0)
 
     def test_empty_taxonomy_column_no_taxtable(self, tmp_path: Path) -> None:
         ps = _make_ps(with_sam=False, with_tax=False)
@@ -401,14 +394,14 @@ class TestQiime1:
 
 
 # ===========================================================================
-# Ticket 2.5 — mothur
+# mothur
 # ===========================================================================
 
 
 def _write_mothur_shared(path: Path, ps: Phyloseq, cutoff: str = "0.03") -> None:
     df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
-        df = df.T  # samples as rows
+        df = df.T
     otus = list(df.columns)
     with open(path, "w") as fh:
         fh.write("label\tGroup\tnumOtus\t" + "\t".join(otus) + "\n")
@@ -486,7 +479,7 @@ class TestMothur:
 
 
 # ===========================================================================
-# Ticket 2.7 — CSV/TSV round-trip
+# CSV/TSV round-trip
 # ===========================================================================
 
 
@@ -539,7 +532,7 @@ class TestCsv:
 
 
 # ===========================================================================
-# Top-level API surface check
+# API surface check
 # ===========================================================================
 
 

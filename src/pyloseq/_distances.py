@@ -6,6 +6,7 @@ R reference: phyloseq::distance(physeq, method, type, ...)
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -61,7 +62,7 @@ def distance_method_list() -> dict[str, list[str]]:
 def distance(
     ps: Phyloseq,
     method: str,
-    type: str = "samples",
+    kind: str = "samples",
     **kwargs: Any,
 ) -> Any:
     """Compute a pairwise distance (or dissimilarity) matrix.
@@ -72,7 +73,7 @@ def distance(
         ``Phyloseq`` object.
     method:
         Distance method.  See :func:`distance_method_list` for all options.
-    type:
+    kind:
         ``"samples"`` (default) or ``"taxa"``.  Most phylogenetic methods
         require ``"samples"``.
     **kwargs:
@@ -85,6 +86,14 @@ def distance(
 
     R reference: distance(physeq, method, type, ...)
     """
+    if "type" in kwargs:
+        warnings.warn(
+            "The 'type' parameter is deprecated; use 'kind' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kind = kwargs.pop("type")
+
     m = method.lower()
 
     if m == "unifrac":
@@ -92,12 +101,12 @@ def distance(
     if m == "wunifrac":
         return unifrac(ps, weighted=True, **kwargs)
     if m == "jsd":
-        return _jsd_distance(ps, type=type)
+        return _jsd_distance(ps, kind=kind)
     if m == "dpcoa":
         return _dpcoa_distance(ps)
 
     if m in _SCIPY_METHODS:
-        return _scipy_distance(ps, m, type=type, **kwargs)
+        return _scipy_distance(ps, m, kind=kind, **kwargs)
 
     raise pyloseqValidationError(f"Unknown distance method: '{method}'. Supported: {_ALL_METHODS}")
 
@@ -178,7 +187,7 @@ def unifrac(
 def _scipy_distance(
     ps: Phyloseq,
     method: str,
-    type: str = "samples",
+    kind: str = "samples",
     **kwargs: Any,
 ) -> Any:
     """Compute pairwise distance matrix via scipy.spatial.distance.pdist."""
@@ -191,7 +200,7 @@ def _scipy_distance(
     if ps.otu_table.taxa_are_rows:
         otu_df = otu_df.T  # → samples × taxa
 
-    if type == "taxa":
+    if kind == "taxa":
         otu_df = otu_df.T  # → taxa × samples
 
     mat = otu_df.values.astype(float)
@@ -209,7 +218,7 @@ def _scipy_distance(
 # ---------------------------------------------------------------------------
 
 
-def _jsd_distance(ps: Phyloseq, type: str = "samples") -> Any:
+def _jsd_distance(ps: Phyloseq, kind: str = "samples") -> Any:
     """Pairwise Jensen-Shannon divergence."""
     from scipy.spatial.distance import jensenshannon, pdist, squareform
     from skbio.stats.distance import DistanceMatrix
@@ -217,7 +226,7 @@ def _jsd_distance(ps: Phyloseq, type: str = "samples") -> Any:
     otu_df = ps.otu_table.to_dataframe()
     if ps.otu_table.taxa_are_rows:
         otu_df = otu_df.T  # → samples × taxa
-    if type == "taxa":
+    if kind == "taxa":
         otu_df = otu_df.T
 
     mat = otu_df.values.astype(float)
@@ -227,10 +236,10 @@ def _jsd_distance(ps: Phyloseq, type: str = "samples") -> Any:
     mat = mat / row_sums
 
     ids = list(otu_df.index)
-    condensed = pdist(mat, metric=jensenshannon)
+    # base=2 ensures output is in [0, 1]: JSD ∈ [0, 1] with base-2 log,
+    # and scipy.jensenshannon returns sqrt(JSD), so the distance ∈ [0, 1].
+    condensed = pdist(mat, metric=lambda u, v: jensenshannon(u, v, base=2))
     sq = squareform(condensed)
-    # JSD returns divergence; square to get distance (as R phyloseq does)
-    sq = sq**2
     return DistanceMatrix(sq, ids=ids)
 
 
@@ -323,12 +332,8 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
 
     result = _dpcoa_manual(freq_table, dm_species)
 
-    sample_coords = result.samples.values
-    n = len(sample_coords)
-    sq = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            d = float(np.linalg.norm(sample_coords[i] - sample_coords[j]))
-            sq[i, j] = sq[j, i] = d
+    from scipy.spatial.distance import pdist, squareform  # noqa: PLC0415
 
+    sample_coords = result.samples.values
+    sq = squareform(pdist(sample_coords))
     return DistanceMatrix(sq, ids=list(result.samples.index))
