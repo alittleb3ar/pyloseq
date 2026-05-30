@@ -1,0 +1,28 @@
+# Reproducible environment for regenerating R phyloseq golden files.
+#
+# Usage:
+#   docker build -f scripts/Dockerfile.golden -t pyloseq-golden .
+#   docker run --rm -v "$(pwd)/tests/golden:/repo/tests/golden" pyloseq-golden
+#
+# The container writes Parquet files into tests/golden/ on the host.
+# Requires Docker with bind-mount support.
+
+FROM rocker/r-ver:4.4.1
+
+WORKDIR /repo
+
+# System deps for arrow + bioc
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+    libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev \
+    libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev \
+    libtiff5-dev libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# R package installation (pinned via renv-style explicit versions)
+COPY scripts/requirements.R /repo/scripts/requirements.R
+RUN Rscript /repo/scripts/requirements.R
+
+# Copy only the generation script (not the full repo)
+COPY scripts/generate_golden.R /repo/scripts/generate_golden.R
+
+CMD ["Rscript", "/repo/scripts/generate_golden.R"]
