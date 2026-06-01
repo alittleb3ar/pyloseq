@@ -3,7 +3,8 @@ from pathlib import Path
 from numpy.testing import assert_allclose
 
 from pyloseq import PhyTree
-from pyloseq.datasets import load_esophagus_reference, load_global_patterns_reference
+from pyloseq.datasets import (load_esophagus_reference,
+                              load_global_patterns_reference)
 
 SIMPLE_NWK = "((OTU1:0.1,OTU2:0.2):0.3,OTU3:0.4);"
 

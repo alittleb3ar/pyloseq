@@ -10,12 +10,17 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from pyloseq._distances import distance as _distance
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._otu_table import OtuTable
 from pyloseq._refseq import RefSeq
 from pyloseq._sample_data import SampleData
 from pyloseq._tax_table import TaxTable
 from pyloseq._tree import PhyTree
+
+if TYPE_CHECKING:
+    from skbio.stats.distance import DistanceMatrix
+    from skbio.stats.ordination import OrdinationResults
 
 
 class Phyloseq:
@@ -232,6 +237,17 @@ class Phyloseq:
         """
         return self._otu.sample_sums()
 
+    def melt(self) -> pd.DataFrame:
+        """Melt to a long-form tidy DataFrame (one row per OTU × Sample pair).
+
+        Equivalent to the free function :func:`pyloseq.psmelt`.
+
+        R reference: psmelt(physeq)
+        """
+        from pyloseq._manipulation import psmelt
+
+        return psmelt(self)
+
     # ------------------------------------------------------------------
     # Dunder
     # ------------------------------------------------------------------
@@ -247,6 +263,56 @@ class Phyloseq:
         if self._refseq is not None:
             parts.append(f"  refseq:      {len(self._refseq)} sequences")
         return "\n".join(parts)
+
+    def distance(self, method: str = "bray", **kwargs: Any) -> DistanceMatrix:
+        """Compute a pairwise distance matrix.
+
+        Thin wrapper around :func:`pyloseq.distance` — returns a
+        ``skbio.stats.distance.DistanceMatrix`` usable directly with
+        ``skbio.stats.distance.permanova`` / ``anosim``.
+
+        Parameters
+        ----------
+        method:
+            Distance method string (e.g. ``"bray"``, ``"unifrac"``).
+        **kwargs:
+            Forwarded to the underlying implementation.
+
+        R reference: distance(physeq, method)
+        """
+
+        return _distance(self, method, **kwargs)
+
+    def ordinate(
+        self,
+        method: str = "PCoA",
+        distance: str = "bray",
+        formula: str | None = None,
+        **kwargs: Any,
+    ) -> OrdinationResults:
+        """Run multivariate ordination.
+
+        Thin wrapper around :func:`pyloseq.ordinate` — returns an
+        ``skbio.stats.ordination.OrdinationResults``.
+
+        Parameters
+        ----------
+        method:
+            Ordination method: ``"PCoA"``, ``"NMDS"``, ``"CCA"``, etc.
+        distance:
+            Distance method or pre-computed ``DistanceMatrix``.
+        formula:
+            Model formula for constrained methods (e.g. ``"~SampleType"``).
+        **kwargs:
+            Forwarded to the underlying implementation.
+
+        R reference: ordinate(physeq, method, distance, formula)
+        """
+        from pyloseq._ordination import ordinate as _ordinate
+
+        return _ordinate(
+            self, method=method, distance=distance, formula=formula, **kwargs
+        )
 
 
 # ------------------------------------------------------------------
