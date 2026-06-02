@@ -37,6 +37,10 @@ def plot_bar(
 ) -> Any:
     """Stacked bar chart of OTU/feature abundances.
 
+    Bars are ordered by ``x`` and stacked deterministically by ``fill`` so
+    that fill segments line up consistently across samples (matching R
+    phyloseq's behaviour).
+
     Parameters
     ----------
     ps:
@@ -66,13 +70,31 @@ def plot_bar(
 
     long_df = psmelt(ps)
 
+    # Deterministic stacking order: sort by x then fill so that stacked
+    # segments are consistent across samples.  R orders the melted frame
+    # by the fill taxon before drawing.
+    sort_keys = [x]
+    if fill and fill in long_df.columns:
+        sort_keys.append(fill)
+    sort_keys = [k for k in sort_keys if k in long_df.columns]
+    if sort_keys:
+        long_df = long_df.sort_values(sort_keys, kind="stable").reset_index(drop=True)
+
     mapping: dict[str, str] = {"x": x, "y": y}
     if fill:
         mapping["fill"] = fill
 
     p = (
         ggplot(long_df, aes(**mapping))
-        + geom_bar(stat="identity", position="stack")
+        # Outlined segments (one per OTU) like phyloseq; group by OTU so each
+        # feature is its own rectangle within the stack.
+        + geom_bar(
+            stat="identity",
+            position="stack",
+            mapping=aes(group="OTU") if "OTU" in long_df.columns else None,
+            color="black",
+            size=0.1,
+        )
         + theme(axis_text_x=element_text(rotation=90, hjust=1))
     )
 
@@ -99,6 +121,10 @@ def plot_richness(
 ) -> Any:
     """Alpha diversity box-and-point plots, faceted by measure.
 
+    Standard-error whiskers are drawn for any measure that has a matching
+    ``se.<measure>`` column from :func:`estimate_richness` (e.g. ``se.chao1``,
+    ``se.ACE``), matching R phyloseq.
+
     Parameters
     ----------
     ps:
@@ -120,44 +146,92 @@ def plot_richness(
     R reference: plot_richness(physeq, x, color, measures, title)
     """
     from plotnine import (aes, element_text, facet_wrap, geom_boxplot,
-                          geom_point, ggplot, labs, theme)
+                          geom_errorbar, geom_point, ggplot, labs, theme)
 
     from pyloseq._diversity import (_ALL_MEASURES,  # noqa: PLC0415
                                     estimate_richness)
 
     rich_df = estimate_richness(ps, measures=measures)
 
+    # Separate the value columns from their standard-error partners.
+    se_cols = [c for c in rich_df.columns if c.lower().startswith("se.")]
+    se_map = {c[3:]: c for c in se_cols}  # measure name -> se column
+
+    requested = measures or _ALL_MEASURES
+    measure_cols = [
+        c
+        for c in rich_df.columns
+        if c not in se_cols and c in requested
+    ]
+
     # Join sample metadata
     if ps.sample_data is not None:
         sam_df = ps.sample_data.to_frame()
         rich_df = rich_df.join(sam_df, how="left")
 
+    # Use a collision-proof name for the sample id rather than the literal
+    # string "index", which can clash with a metadata column.
+    sample_id_col = "_sample_id"
+    rich_df[sample_id_col] = rich_df.index
+
     if x == "samples":
-        rich_df["_sample"] = rich_df.index
-        x_col = "_sample"
+        x_col = sample_id_col
     else:
         x_col = x
 
-    # Melt to long form for faceting
-    measure_cols = [c for c in rich_df.columns if c in (measures or _ALL_MEASURES)]
-    id_vars = [c for c in rich_df.columns if c not in measure_cols]
-    long = rich_df.reset_index().melt(
-        id_vars=["index"] + [c for c in id_vars if c != "index"],
+    id_vars = [c for c in rich_df.columns if c not in measure_cols and c not in se_cols]
+
+    # Melt the measure values to long form.
+    long = rich_df.melt(
+        id_vars=id_vars,
         value_vars=measure_cols,
         var_name="Measure",
         value_name="Value",
     )
 
+    # Melt the SE values in parallel (if any) and merge them back, aligned by
+    # sample id + measure.
+    if se_map:
+        se_long_frames = []
+        for measure, se_col in se_map.items():
+            if measure not in measure_cols:
+                continue
+            sub = rich_df[[sample_id_col, se_col]].copy()
+            sub["Measure"] = measure
+            sub = sub.rename(columns={se_col: "SE"})
+            se_long_frames.append(sub)
+        if se_long_frames:
+            se_long = pd.concat(se_long_frames, ignore_index=True)
+            long = long.merge(se_long, on=[sample_id_col, "Measure"], how="left")
+    if "SE" not in long.columns:
+        long["SE"] = np.nan
+
+    long["ymin"] = long["Value"] - long["SE"]
+    long["ymax"] = long["Value"] + long["SE"]
+
     mapping: dict[str, str] = {
-        "x": x_col if x_col in long.columns else "index",
+        "x": x_col if x_col in long.columns else sample_id_col,
         "y": "Value",
     }
     if color and color in long.columns:
         mapping["color"] = color
 
+    p = ggplot(long, aes(**mapping))
+
+    # Boxplot only makes sense when x groups multiple samples; still harmless
+    # for per-sample x (renders as a degenerate box) and matches R, which
+    # always layers it.
+    p = p + geom_boxplot(alpha=0.5)
+
+    # Error bars where SE is available.
+    if long["SE"].notna().any():
+        p = p + geom_errorbar(
+            aes(ymin="ymin", ymax="ymax"),
+            width=0.2,
+        )
+
     p = (
-        ggplot(long, aes(**mapping))
-        + geom_boxplot(alpha=0.5)
+        p
         + geom_point(size=2)
         + facet_wrap("~Measure", scales="free_y")
         + theme(axis_text_x=element_text(rotation=90, hjust=1))
@@ -174,6 +248,24 @@ def plot_richness(
 # ---------------------------------------------------------------------------
 
 
+def _rescale_biplot_scores(
+    sample_xy: np.ndarray,
+    feature_xy: np.ndarray,
+) -> np.ndarray:
+    """Rescale feature (taxa) scores so they are comparable to sample scores.
+
+    Uses the classic biplot heuristic: scale the feature coordinates so their
+    spread matches the sample spread, so taxa arrows/points sit on the same
+    visual scale as the samples instead of collapsing near the origin or
+    flying off-axis.
+    """
+    if feature_xy.size == 0 or sample_xy.size == 0:
+        return feature_xy
+    samp_span = np.nanmax(np.abs(sample_xy)) or 1.0
+    feat_span = np.nanmax(np.abs(feature_xy)) or 1.0
+    return feature_xy * (samp_span / feat_span)
+
+
 def plot_ordination(
     ps: Phyloseq,
     ord: Any,
@@ -182,6 +274,8 @@ def plot_ordination(
     shape: str | None = None,
     label: str | None = None,
     title: str | None = None,
+    show_hull: bool = False,
+    just_df: bool = False,
     **kwargs: Any,
 ) -> Any:
     """Scatter plot of ordination results.
@@ -203,12 +297,20 @@ def plot_ordination(
         Column to annotate points with text labels.
     title:
         Plot title.
+    show_hull:
+        If ``True``, shade a convex hull behind each colour group (samples
+        and split kinds only).  Off by default; this is not phyloseq
+        behaviour but is offered as a convenience.
+    just_df:
+        If ``True``, return the assembled plotting ``DataFrame`` instead of a
+        ggplot (mirrors R phyloseq's ``justDF=TRUE``).
 
     Returns
     -------
-    plotnine.ggplot
+    plotnine.ggplot or pandas.DataFrame
 
-    R reference: plot_ordination(physeq, ordination, type, color, shape, label, title)
+    R reference: plot_ordination(physeq, ordination, type, color, shape,
+                                 label, title, justDF)
     """
     if "type" in kwargs:
         warnings.warn(
@@ -221,6 +323,13 @@ def plot_ordination(
     from plotnine import aes, geom_point, geom_text, ggplot, labs, xlab, ylab
 
     if kind == "scree":
+        if just_df:
+            return pd.DataFrame(
+                {
+                    "Axis": range(1, len(ord.proportion_explained) + 1),
+                    "Variance": ord.proportion_explained.values * 100,
+                }
+            )
         return _plot_scree(ord, title=title)
 
     if kind in ("samples", "biplot"):
@@ -236,8 +345,12 @@ def plot_ordination(
             plot_df = plot_df.join(sam_df, how="left")
 
         if kind == "biplot" and ord.features is not None:
-            feat_df = pd.DataFrame(
+            feat_xy = _rescale_biplot_scores(
+                ord.samples.values[:, :2],
                 ord.features.values[:, :2],
+            )
+            feat_df = pd.DataFrame(
+                feat_xy,
                 index=ord.features.index,
                 columns=["Axis.1", "Axis.2"],
             )
@@ -251,7 +364,8 @@ def plot_ordination(
         if ord.features is None:
             raise pyloseqValidationError(
                 "Ordination result has no 'features' (taxa) scores. "
-                "Use type='samples' or re-run ordinate with a method that produces taxa scores."
+                "Use kind='samples' or re-run ordinate with a method that "
+                "produces taxa scores."
             )
         plot_df = pd.DataFrame(
             ord.features.values[:, :2],
@@ -262,8 +376,12 @@ def plot_ordination(
             plot_df = plot_df.join(ps.tax_table.to_frame(), how="left")
 
     elif kind == "split":
-        # Two panels: samples and taxa side by side
-        return _plot_split(ps, ord, color=color, shape=shape)
+        if just_df:
+            return _split_df(ps, ord)
+        return _plot_split(
+            ps, ord, color=color, shape=shape, label=label,
+            title=title, show_hull=show_hull,
+        )
 
     else:
         raise pyloseqValidationError(
@@ -272,6 +390,9 @@ def plot_ordination(
         )
 
     plot_df = plot_df.reset_index()
+
+    if just_df:
+        return plot_df
 
     mapping: dict[str, str] = {"x": "Axis.1", "y": "Axis.2"}
     if color and color in plot_df.columns:
@@ -291,20 +412,58 @@ def plot_ordination(
             return f"{name} [{pct:.1f}%]"
         return name
 
-    p = (
-        ggplot(plot_df, aes(**mapping))
-        + geom_point(size=3)
-        + xlab(_axis_label(1))
-        + ylab(_axis_label(2))
-    )
+    from plotnine import geom_polygon  # noqa: PLC0415
+
+    p = ggplot(plot_df, aes(**mapping)) + xlab(_axis_label(1)) + ylab(_axis_label(2))
+
+    # Convex hull shading per group (opt-in; samples kind only since biplot
+    # mixes taxa rows into the frame).
+    if show_hull and color and color in plot_df.columns and kind == "samples":
+        hull_data = _convex_hull_df(plot_df.dropna(subset=[color]), color)
+        if not hull_data.empty:
+            p = p + geom_polygon(
+                data=hull_data,
+                mapping=aes(x="Axis.1", y="Axis.2", fill=color, group=color),
+                alpha=0.1,
+                color=None,
+            )
+
+    p = p + geom_point(size=3)
 
     if label and label in plot_df.columns:
-        p = p + geom_text(aes(label=label), nudge_y=0.01, size=7)
+        # Nudge proportional to the y-axis range so labels clear the points
+        # regardless of axis scale.
+        y_range = (plot_df["Axis.2"].max() - plot_df["Axis.2"].min()) or 1.0
+        p = p + geom_text(aes(label=label), nudge_y=0.02 * y_range, size=7)
 
     if title:
         p = p + labs(title=title)
 
     return p
+
+
+def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    """Return a DataFrame of convex hull vertices per group for geom_polygon.
+
+    Groups with fewer than 3 points cannot form a hull and are skipped.
+    """
+    from scipy.spatial import ConvexHull, QhullError  # noqa: PLC0415
+
+    rows: list[dict] = []
+    for group, sub in df.groupby(group_col, sort=False, observed=True):
+        pts = sub[["Axis.1", "Axis.2"]].values
+        if len(pts) < 3:
+            continue
+        try:
+            hull = ConvexHull(pts)
+            # vertices are already in CCW order; close the polygon
+            for idx in np.append(hull.vertices, hull.vertices[0]):
+                rows.append(
+                    {"Axis.1": pts[idx, 0], "Axis.2": pts[idx, 1], group_col: group}
+                )
+        except QhullError:
+            continue
+    return pd.DataFrame(rows)
 
 
 def _plot_scree(ord: Any, title: str | None = None) -> Any:
@@ -333,18 +492,13 @@ def _plot_scree(ord: Any, title: str | None = None) -> Any:
     return p
 
 
-def _plot_split(
-    ps: Phyloseq,
-    ord: Any,
-    color: str | None = None,
-    shape: str | None = None,
-) -> Any:
-    """Split biplot: samples and taxa in side-by-side facets."""
-    from plotnine import aes, facet_wrap, geom_point, ggplot
-
+def _split_df(ps: Phyloseq, ord: Any) -> pd.DataFrame:
+    """Assemble the combined samples+taxa DataFrame used by the split plot."""
     frames = []
     sam_df = pd.DataFrame(
-        ord.samples.values[:, :2], index=ord.samples.index, columns=["Axis.1", "Axis.2"]
+        ord.samples.values[:, :2],
+        index=ord.samples.index,
+        columns=["Axis.1", "Axis.2"],
     )
     sam_df["_panel"] = "Samples"
     if ps.sample_data is not None:
@@ -352,8 +506,12 @@ def _plot_split(
     frames.append(sam_df)
 
     if ord.features is not None:
-        feat_df = pd.DataFrame(
+        feat_xy = _rescale_biplot_scores(
+            ord.samples.values[:, :2],
             ord.features.values[:, :2],
+        )
+        feat_df = pd.DataFrame(
+            feat_xy,
             index=ord.features.index,
             columns=["Axis.1", "Axis.2"],
         )
@@ -362,13 +520,54 @@ def _plot_split(
             feat_df = feat_df.join(ps.tax_table.to_frame(), how="left")
         frames.append(feat_df)
 
-    combined = pd.concat(frames).reset_index()
+    return pd.concat(frames).reset_index()
+
+
+def _plot_split(
+    ps: Phyloseq,
+    ord: Any,
+    color: str | None = None,
+    shape: str | None = None,
+    label: str | None = None,
+    title: str | None = None,
+    show_hull: bool = False,
+) -> Any:
+    """Split biplot: samples and taxa in side-by-side facets."""
+    from plotnine import (aes, facet_wrap, geom_point, geom_polygon,
+                          geom_text, ggplot, labs)
+
+    combined = _split_df(ps, ord)
     mapping: dict[str, str] = {"x": "Axis.1", "y": "Axis.2"}
     if color and color in combined.columns:
         mapping["color"] = color
     if shape and shape in combined.columns:
         mapping["shape"] = shape
-    return ggplot(combined, aes(**mapping)) + geom_point(size=3) + facet_wrap("~_panel")
+
+    p = ggplot(combined, aes(**mapping))
+
+    # Convex hull shading on the Samples panel only (opt-in).
+    if show_hull and color and color in combined.columns:
+        sam_only = combined[combined["_panel"] == "Samples"].dropna(subset=[color])
+        hull_data = _convex_hull_df(sam_only, color)
+        if not hull_data.empty:
+            hull_data["_panel"] = "Samples"
+            p = p + geom_polygon(
+                data=hull_data,
+                mapping=aes(x="Axis.1", y="Axis.2", fill=color, group=color),
+                alpha=0.1,
+                color=None,
+            )
+
+    p = p + geom_point(size=3) + facet_wrap("~_panel")
+
+    if label and label in combined.columns:
+        y_range = (combined["Axis.2"].max() - combined["Axis.2"].min()) or 1.0
+        p = p + geom_text(aes(label=label), nudge_y=0.02 * y_range, size=7)
+
+    if title:
+        p = p + labs(title=title)
+
+    return p
 
 
 # ---------------------------------------------------------------------------
@@ -380,26 +579,34 @@ def plot_heatmap(
     ps: Phyloseq,
     method: str = "NMDS",
     distance: str = "bray",
-    trans: str | None = None,
+    trans: str | None = "log4",
     low: str = "#000033",
     high: str = "#66CCFF",
+    na_value: str = "black",
     title: str | None = None,
 ) -> Any:
-    """Abundance heatmap with samples and taxa reordered by ordination.
+    """Abundance heatmap with samples *and* taxa reordered by ordination.
+
+    Both axes are reordered using the ordination result (samples along x,
+    taxa/OTUs along y), matching R phyloseq.  Zero/NA abundances are mapped
+    to ``na_value`` rather than the gradient's low colour.
 
     Parameters
     ----------
     ps:
         ``Phyloseq`` object.
     method:
-        Ordination method used to reorder samples.
+        Ordination method used to reorder samples and taxa.
     distance:
         Distance metric for ordination.
     trans:
         Transformation applied to abundances before plotting.
-        ``"log4"`` computes ``log4(x + 1)``; ``None`` uses raw counts.
+        ``"log4"`` (default) computes ``log4(x)`` with zeros kept as missing
+        (so they map to ``na_value``); ``None`` uses raw counts.
     low, high:
         Gradient colour endpoints.
+    na_value:
+        Colour for zero/NA cells.
     title:
         Plot title.
 
@@ -407,7 +614,8 @@ def plot_heatmap(
     -------
     plotnine.ggplot
 
-    R reference: plot_heatmap(physeq, method, distance, trans, low, high, title)
+    R reference: plot_heatmap(physeq, method, distance, trans, low, high,
+                              na.value, title)
     """
     from plotnine import (aes, element_text, geom_tile, ggplot, labs,
                           scale_fill_gradient, theme)
@@ -415,35 +623,47 @@ def plot_heatmap(
     from pyloseq._manipulation import psmelt  # noqa: PLC0415
     from pyloseq._ordination import ordinate  # noqa: PLC0415
 
-    # Ordinate to get sample ordering
+    # Ordinate to get sample AND taxa ordering.
+    sample_order: list = list(ps.sample_names)
+    taxa_order: list = list(ps.taxa_names)
     try:
         ord_result = ordinate(ps, method=method, distance=distance)
         first_axis = ord_result.samples.columns[0]
         sample_order = list(ord_result.samples.sort_values(first_axis).index)
+        # Reorder taxa by their ordination scores when available.
+        if getattr(ord_result, "features", None) is not None:
+            feat_first = ord_result.features.columns[0]
+            taxa_order = list(ord_result.features.sort_values(feat_first).index)
     except (ValueError, RuntimeError, KeyError, pyloseqValidationError) as e:
         warnings.warn(
-            f"Ordination failed ({e!r}); using original sample order.",
+            f"Ordination failed ({e!r}); using original sample/taxa order.",
             stacklevel=2,
         )
-        sample_order = list(ps.sample_names)
 
     long_df = psmelt(ps)
 
-    # Apply transformation
+    # Apply transformation.  Zeros become NaN so they render as na_value
+    # rather than being lumped into the gradient low colour.
     if trans == "log4":
-        long_df["Abundance"] = np.log(long_df["Abundance"] + 1) / np.log(4)
+        vals = long_df["Abundance"].astype(float)
+        with np.errstate(divide="ignore"):
+            transformed = np.log(vals.where(vals > 0)) / np.log(4)
+        long_df["Abundance"] = transformed
     elif trans is not None:
         raise pyloseqValidationError(f"Unknown trans '{trans}'. Use 'log4' or None.")
 
-    # Order samples by ordination axis
+    # Order both axes by the ordination.
     long_df["Sample"] = pd.Categorical(
         long_df["Sample"], categories=sample_order, ordered=True
+    )
+    long_df["OTU"] = pd.Categorical(
+        long_df["OTU"], categories=taxa_order, ordered=True
     )
 
     p = (
         ggplot(long_df, aes(x="Sample", y="OTU", fill="Abundance"))
         + geom_tile()
-        + scale_fill_gradient(low=low, high=high)
+        + scale_fill_gradient(low=low, high=high, na_value=na_value)
         + theme(axis_text_x=element_text(rotation=90, hjust=1))
     )
 
@@ -468,6 +688,9 @@ def make_network(
 ) -> Any:
     """Build a sample (or taxa) network based on a distance threshold.
 
+    Edges are drawn between nodes whose distance is strictly less than
+    ``max_dist`` (matching R phyloseq's ``max.dist`` semantics).
+
     Parameters
     ----------
     ps:
@@ -475,9 +698,11 @@ def make_network(
     kind:
         ``"samples"`` (default) or ``"taxa"``.
     distance:
-        Distance metric (see :func:`pyloseq.distance`).
+        Distance metric (see :func:`pyloseq.distance`).  For ``"jaccard"`` a
+        binary (presence/absence) Jaccard distance is used, consistent with
+        phyloseq's default network distance.
     max_dist:
-        Maximum distance for an edge to be drawn.
+        Maximum distance for an edge to be drawn (strict ``<``).
     keep_isolates:
         If ``False`` (default), remove nodes with no edges.
 
@@ -504,6 +729,9 @@ def make_network(
 
     from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
+    # Note: _distance handles presence/absence binarization internally for
+    # metrics that require it (e.g. jaccard), so we do not pass a binary flag
+    # here — scipy's pdist would reject it.
     dm = _distance(ps, distance, kind=kind)
     ids = list(dm.ids)
     data = np.array(dm.data)
@@ -515,20 +743,27 @@ def make_network(
         for j, v in enumerate(ids):
             if j <= i:
                 continue
-            if data[i, j] <= max_dist:
+            # Strict less-than, matching R's max.dist behaviour.
+            if data[i, j] < max_dist:
                 g.add_edge(u, v, weight=float(data[i, j]))
 
     if not keep_isolates:
         isolates = list(nx.isolates(g))
         g.remove_nodes_from(isolates)
 
-    # Attach sample metadata as node attributes
+    # Attach metadata as node attributes.
     if kind == "samples" and ps.sample_data is not None:
         sam_df = ps.sample_data.to_frame()
         for node in g.nodes:
             if node in sam_df.index:
                 for col in sam_df.columns:
                     g.nodes[node][col] = sam_df.loc[node, col]
+    elif kind == "taxa" and ps.tax_table is not None:
+        tax_df = ps.tax_table.to_frame()
+        for node in g.nodes:
+            if node in tax_df.index:
+                for col in tax_df.columns:
+                    g.nodes[node][col] = tax_df.loc[node, col]
 
     return g
 
@@ -537,6 +772,12 @@ def plot_network(
     g: Any,
     ps: Phyloseq,
     color: str | None = None,
+    shape: str | None = None,
+    line_weight: float = 0.5,
+    line_color: str = "grey",
+    line_alpha: float = 0.4,
+    point_size: float = 5.0,
+    label: str | None = None,
     layout: str = "fruchterman_reingold",
     title: str | None = None,
 ) -> Any:
@@ -550,6 +791,19 @@ def plot_network(
         ``Phyloseq`` object (used for metadata annotations).
     color:
         Node attribute column for colour.
+    shape:
+        Node attribute column for point shape.
+    line_weight:
+        Edge line width.
+    line_color:
+        Edge colour.
+    line_alpha:
+        Edge opacity.
+    point_size:
+        Node point size.
+    label:
+        Node attribute column (or ``"node"`` for the node id) to draw as text
+        labels next to each node.
     layout:
         NetworkX layout algorithm name (e.g. ``"fruchterman_reingold"``).
     title:
@@ -559,7 +813,9 @@ def plot_network(
     -------
     plotnine.ggplot
 
-    R reference: plot_network(ig, physeq, color, layout, title)
+    R reference: plot_network(ig, physeq, color, shape, line_weight,
+                              line_color, line_alpha, point_size, label,
+                              layout, title)
     """
     try:
         import networkx as nx
@@ -568,7 +824,8 @@ def plot_network(
             "plot_network requires networkx. Install it with: pip install networkx"
         ) from e
 
-    from plotnine import aes, geom_point, geom_segment, ggplot, labs
+    from plotnine import (aes, geom_point, geom_segment, geom_text, ggplot,
+                          labs)
 
     layout_fn = getattr(nx, f"{layout}_layout", nx.spring_layout)
     pos = layout_fn(g)
@@ -596,6 +853,8 @@ def plot_network(
     mapping: dict[str, str] = {"x": "x", "y": "y"}
     if color and color in nodes_df.columns:
         mapping["color"] = color
+    if shape and shape in nodes_df.columns:
+        mapping["shape"] = shape
 
     p = ggplot(nodes_df, aes(**mapping))
 
@@ -603,10 +862,20 @@ def plot_network(
         p = p + geom_segment(
             data=edges_df,
             mapping=aes(x="x", y="y", xend="xend", yend="yend"),
-            color="grey70",
+            color=line_color,
+            size=line_weight,
+            alpha=line_alpha,
         )
 
-    p = p + geom_point(size=5)
+    p = p + geom_point(size=point_size)
+
+    if label and label in nodes_df.columns:
+        y_range = (nodes_df["y"].max() - nodes_df["y"].min()) or 1.0
+        p = p + geom_text(
+            aes(label=label),
+            nudge_y=0.02 * y_range,
+            size=7,
+        )
 
     if title:
         p = p + labs(title=title)
@@ -640,7 +909,8 @@ def _tree_layout(
 
     # Detect whether the tree has meaningful branch lengths
     has_lengths = any(
-        n.length is not None and n.length > 0 for n in tree.traverse(include_self=False)
+        n.length is not None and n.length > 0
+        for n in tree.traverse(include_self=False)
     )
 
     tip_order: list[str] = [t.name for t in tree.tips(include_self=False)]
@@ -728,8 +998,9 @@ def plot_tree(
     shape:
         Sample metadata column for point shape.
     size:
-        ``"Abundance"`` to scale point size as ``log(abundance) / log(sizebase)``,
-        any numeric metadata column, or ``None`` for fixed size.
+        ``"Abundance"`` to scale point size by abundance (the size legend
+        reports the original abundance breaks, not the log-transformed
+        values), any numeric metadata column, or ``None`` for fixed size.
     label_tips:
         ``tax_table`` column whose values label each tip (e.g. ``"Genus"``).
     text_size:
@@ -740,7 +1011,8 @@ def plot_tree(
         Fractional x-spacing between dodged points, as a fraction of the tree
         x-range.
     min_abundance:
-        Drop sample points with abundance at or below this (sampledodge only).
+        Drop sample points whose abundance is less than or equal to this
+        value (sampledodge only).
     ladderize:
         ``False``, ``True``/``"right"``, or ``"left"``.
     title:
@@ -785,6 +1057,8 @@ def plot_tree(
         from pyloseq._manipulation import psmelt  # noqa: PLC0415
 
         long_df = psmelt(ps)
+        # Drop points at or below the threshold (<=), matching the documented
+        # behaviour.
         long_df = long_df[long_df["Abundance"] > min_abundance].copy()
         long_df = long_df[long_df["OTU"].isin(tip_x)]
 
@@ -803,17 +1077,33 @@ def plot_tree(
             mapping["color"] = color
         if shape and shape in long_df.columns:
             mapping["shape"] = shape
+
+        size_breaks = None
+        size_labels = None
         if size == "Abundance":
-            long_df["_size"] = np.log(long_df["Abundance"].clip(lower=1.0)) / np.log(
-                sizebase
-            )
+            # Transform for the visual radius, but compute legend breaks in
+            # the original abundance units so the legend is meaningful.
+            ab = long_df["Abundance"].clip(lower=1.0)
+            long_df["_size"] = np.log(ab) / np.log(sizebase)
             mapping["size"] = "_size"
+
+            raw_min = float(long_df["Abundance"].min())
+            raw_max = float(long_df["Abundance"].max())
+            raw_breaks = np.unique(
+                np.linspace(max(raw_min, 1.0), max(raw_max, 1.0), num=4).round()
+            )
+            size_breaks = list(np.log(np.clip(raw_breaks, 1.0, None)) / np.log(sizebase))
+            size_labels = [f"{int(b)}" for b in raw_breaks]
         elif size and size in long_df.columns:
             mapping["size"] = size
 
         p = p + geom_point(data=long_df, mapping=aes(**mapping))
         if size == "Abundance":
-            p = p + scale_size_continuous(name="Abundance")
+            p = p + scale_size_continuous(
+                name="Abundance",
+                breaks=size_breaks,
+                labels=size_labels,
+            )
 
     # Tip labels
     if label_tips:
