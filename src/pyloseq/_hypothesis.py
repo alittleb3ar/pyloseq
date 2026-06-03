@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import _otu_taxa_rows
 
 if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
@@ -80,8 +81,6 @@ def multi_tax_test(
     """
     if ps.sample_data is None:
         raise pyloseqValidationError("multi_tax_test requires sample_data")
-
-    from pyloseq._manipulation import _otu_taxa_rows  # noqa: PLC0415
 
     sam_df = ps.sample_data.to_frame()
     if grouping_var not in sam_df.columns:

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import brentq
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
@@ -40,6 +41,8 @@ def estimate_richness(
 ) -> pd.DataFrame:
     """Estimate richness (alpha diversity) for each sample.
 
+    R reference: estimate_richness(physeq, split, measures)
+
     Parameters
     ----------
     ps:
@@ -58,8 +61,6 @@ def estimate_richness(
     pd.DataFrame
         Indexed by sample name (or ``"pooled"`` when ``split=False``); columns
         are the requested measures.
-
-    R reference: estimate_richness(physeq, split, measures)
     """
     if measures is None:
         measures = list(_ALL_MEASURES)
@@ -215,7 +216,6 @@ def _ace(nonzero: np.ndarray) -> tuple[float, float]:
 
 def _fisher_alpha(n: int, s_obs: int) -> float:
     """Fisher's log-series alpha via Brent root-finding (matches R vegan::fisher.alpha)."""
-    from scipy.optimize import brentq
 
     if s_obs == 0 or n == 0:
         return float("nan")

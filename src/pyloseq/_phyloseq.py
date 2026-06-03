@@ -367,7 +367,7 @@ def _validate(
        (phy_tree is intentionally excluded — it is pruned TO the OTU table, not vice versa)
     3. Sample-name intersection between OtuTable and SampleData is non-empty
     4. Prune all components to the intersection (or raise in strict mode)
-    
+
     """
     # Rule 1 — OtuTable required
     if ps._otu is None:

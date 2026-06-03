@@ -287,7 +287,7 @@ def kOverA(k: int, A: float) -> Callable[[pd.Series], bool]:
     A:
         Abundance threshold.
 
-    
+
     """
 
     def _predicate(x: pd.Series) -> bool:
@@ -318,7 +318,7 @@ def filter_taxa(
     ``prune=FALSE`` behaviour (return the boolean mask without pruning), use
     :func:`taxa_filter_mask`.
 
-    
+
     """
     df = _otu_taxa_rows(ps)
     keep_mask: pd.Series = df.apply(predicate, axis=1)

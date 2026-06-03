@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+from skbio.stats.distance import DistanceMatrix
+from skbio.stats.ordination import OrdinationResults, cca, rda
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
 
 if TYPE_CHECKING:
-    from skbio.stats.ordination import OrdinationResults
 
     from pyloseq._phyloseq import Phyloseq
 
@@ -104,7 +105,6 @@ def ordinate(
 
 def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
     """Compute or return a distance matrix."""
-    from skbio.stats.distance import DistanceMatrix
 
     if isinstance(distance, DistanceMatrix):
         return distance
@@ -154,8 +154,6 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
         return nmds(dm, **kwargs)
     except (ImportError, AttributeError):
         pass
-
-    from skbio.stats.ordination import OrdinationResults
 
     n_dims = kwargs.get("number_of_dimensions", 2)
     dist_sq = np.array(dm.data)  # already square — do NOT squareform
@@ -258,7 +256,6 @@ def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "CCA", formula=~Var)
     """
-    from skbio.stats.ordination import cca
 
     x_df = _parse_formula(ps, formula)
 
@@ -302,7 +299,6 @@ def _cap(
 
     R reference: ordinate(physeq, "CAP", distance, formula)
     """
-    from skbio.stats.ordination import rda
 
     dm = _resolve_dm(ps, distance)
     x_df = _parse_formula(ps, formula)
@@ -362,7 +358,6 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
         2 = column/taxa scaling. Matches vegan's ``scaling`` argument.
 
     """
-    from skbio.stats.ordination import OrdinationResults
 
     otu_df = _otu_samples_rows(ps)  # samples x taxa
     N = otu_df.values.astype(float)

@@ -1,7 +1,4 @@
-"""BIOM v1 (JSON) and v2 (HDF5) reader and writer.
-
-R reference: phyloseq::import_biom(BIOMfilename, ...)
-"""
+"""BIOM v1 (JSON) and v2 (HDF5) reader and writer."""
 
 from __future__ import annotations
 

@@ -4,8 +4,6 @@ All functions return ``plotnine.ggplot`` objects (except :func:`make_network`
 which returns a ``networkx.Graph``).  The underlying data is always available
 via the plot's ``.data`` attribute.
 
-R reference: phyloseq plot_bar, plot_richness, plot_ordination, plot_heatmap,
-             plot_tree, make_network, plot_network
 """
 
 from __future__ import annotations
@@ -15,8 +13,26 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+import plotnine as _pn
+from plotnine import aes, element_blank, element_text
+from plotnine import facet_grid as pg_facet_grid
+from plotnine import (facet_wrap, geom_bar, geom_boxplot, geom_errorbar,
+                      geom_line, geom_point, geom_polygon, geom_segment,
+                      geom_text, geom_tile, ggplot, labs, scale_fill_gradient,
+                      scale_size_continuous, scale_x_continuous, theme,
+                      theme_minimal, xlab, ylab)
+from scipy.spatial import ConvexHull, QhullError
 
+try:
+    import networkx as nx
+except ImportError:
+    nx = None
+
+from pyloseq._distances import distance as _distance
+from pyloseq._diversity import _ALL_MEASURES, estimate_richness
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import psmelt
+from pyloseq._ordination import ordinate
 
 if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
@@ -41,6 +57,8 @@ def plot_bar(
     that fill segments line up consistently across samples (matching R
     phyloseq's behaviour).
 
+    R reference: plot_bar(physeq, x, y, fill, facet_grid, title)
+
     Parameters
     ----------
     ps:
@@ -60,13 +78,7 @@ def plot_bar(
     -------
     plotnine.ggplot
 
-    R reference: plot_bar(physeq, x, y, fill, facet_grid, title)
     """
-    from plotnine import aes, element_text
-    from plotnine import facet_grid as pg_facet_grid
-    from plotnine import geom_bar, ggplot, labs, theme
-
-    from pyloseq._manipulation import psmelt  # noqa: PLC0415
 
     long_df = psmelt(ps)
 
@@ -125,6 +137,8 @@ def plot_richness(
     ``se.<measure>`` column from :func:`estimate_richness` (e.g. ``se.chao1``,
     ``se.ACE``), matching R phyloseq.
 
+    R reference: plot_richness(physeq, x, color, measures, title)
+
     Parameters
     ----------
     ps:
@@ -143,22 +157,7 @@ def plot_richness(
     -------
     plotnine.ggplot
 
-    R reference: plot_richness(physeq, x, color, measures, title)
     """
-    from plotnine import (
-        aes,
-        element_text,
-        facet_wrap,
-        geom_boxplot,
-        geom_errorbar,
-        geom_point,
-        ggplot,
-        labs,
-        theme,
-    )
-
-    from pyloseq._diversity import _ALL_MEASURES, estimate_richness  # noqa: PLC0415
-
     rich_df = estimate_richness(ps, measures=measures)
 
     # Separate the value columns from their standard-error partners.
@@ -284,6 +283,9 @@ def plot_ordination(
 ) -> Any:
     """Scatter plot of ordination results.
 
+    R reference: plot_ordination(physeq, ordination, type, color, shape,
+                                 label, title, justDF)
+
     Parameters
     ----------
     ps:
@@ -313,8 +315,7 @@ def plot_ordination(
     -------
     plotnine.ggplot or pandas.DataFrame
 
-    R reference: plot_ordination(physeq, ordination, type, color, shape,
-                                 label, title, justDF)
+
     """
     if "type" in kwargs:
         warnings.warn(
@@ -323,8 +324,6 @@ def plot_ordination(
             stacklevel=2,
         )
         kind = kwargs.pop("type")
-
-    from plotnine import aes, geom_point, geom_text, ggplot, labs, xlab, ylab
 
     if kind == "scree":
         if just_df:
@@ -421,8 +420,6 @@ def plot_ordination(
             return f"{name} [{pct:.1f}%]"
         return name
 
-    from plotnine import geom_polygon  # noqa: PLC0415
-
     p = ggplot(plot_df, aes(**mapping)) + xlab(_axis_label(1)) + ylab(_axis_label(2))
 
     # Convex hull shading per group (opt-in; samples kind only since biplot
@@ -456,8 +453,6 @@ def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
 
     Groups with fewer than 3 points cannot form a hull and are skipped.
     """
-    from scipy.spatial import ConvexHull, QhullError  # noqa: PLC0415
-
     rows: list[dict] = []
     for group, sub in df.groupby(group_col, sort=False, observed=True):
         pts = sub[["Axis.1", "Axis.2"]].values
@@ -477,8 +472,6 @@ def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
 
 def _plot_scree(ord: Any, title: str | None = None) -> Any:
     """Scree plot of eigenvalues / proportion explained."""
-    from plotnine import aes, geom_line, geom_point, ggplot, labs, xlab, ylab
-
     if ord.proportion_explained is None or ord.proportion_explained.isna().all():
         raise pyloseqValidationError(
             "Ordination result has no proportion_explained; scree plot unavailable."
@@ -542,16 +535,6 @@ def _plot_split(
     show_hull: bool = False,
 ) -> Any:
     """Split biplot: samples and taxa in side-by-side facets."""
-    from plotnine import (
-        aes,
-        facet_wrap,
-        geom_point,
-        geom_polygon,
-        geom_text,
-        ggplot,
-        labs,
-    )
-
     combined = _split_df(ps, ord)
     mapping: dict[str, str] = {"x": "Axis.1", "y": "Axis.2"}
     if color and color in combined.columns:
@@ -607,6 +590,9 @@ def plot_heatmap(
     taxa/OTUs along y), matching R phyloseq.  Zero/NA abundances are mapped
     to ``na_value`` rather than the gradient's low colour.
 
+    R reference: plot_heatmap(physeq, method, distance, trans, low, high,
+                              na.value, title)
+
     Parameters
     ----------
     ps:
@@ -630,22 +616,7 @@ def plot_heatmap(
     -------
     plotnine.ggplot
 
-    R reference: plot_heatmap(physeq, method, distance, trans, low, high,
-                              na.value, title)
     """
-    from plotnine import (
-        aes,
-        element_text,
-        geom_tile,
-        ggplot,
-        labs,
-        scale_fill_gradient,
-        theme,
-    )
-
-    from pyloseq._manipulation import psmelt  # noqa: PLC0415
-    from pyloseq._ordination import ordinate  # noqa: PLC0415
-
     # Ordinate to get sample AND taxa ordering.
     sample_order: list = list(ps.sample_names)
     taxa_order: list = list(ps.taxa_names)
@@ -712,6 +683,8 @@ def make_network(
     Edges are drawn between nodes whose distance is strictly less than
     ``max_dist`` (matching R phyloseq's ``max.dist`` semantics).
 
+    R reference: make_network(physeq, type, distance, max.dist, keep.isolates)
+
     Parameters
     ----------
     ps:
@@ -731,14 +704,11 @@ def make_network(
     -------
     networkx.Graph
 
-    R reference: make_network(physeq, type, distance, max.dist, keep.isolates)
     """
-    try:
-        import networkx as nx
-    except ImportError as e:
+    if nx is None:
         raise ImportError(
             "make_network requires networkx. Install it with: pip install networkx"
-        ) from e
+        )
 
     if "type" in kwargs:
         warnings.warn(
@@ -747,8 +717,6 @@ def make_network(
             stacklevel=2,
         )
         kind = kwargs.pop("type")
-
-    from pyloseq._distances import distance as _distance  # noqa: PLC0415
 
     # Note: _distance handles presence/absence binarization internally for
     # metrics that require it (e.g. jaccard), so we do not pass a binary flag
@@ -804,6 +772,10 @@ def plot_network(
 ) -> Any:
     """Plot a network graph as a ggplot scatter.
 
+    R reference: plot_network(ig, physeq, color, shape, line_weight,
+                              line_color, line_alpha, point_size, label,
+                              layout, title)
+
     Parameters
     ----------
     g:
@@ -834,18 +806,11 @@ def plot_network(
     -------
     plotnine.ggplot
 
-    R reference: plot_network(ig, physeq, color, shape, line_weight,
-                              line_color, line_alpha, point_size, label,
-                              layout, title)
     """
-    try:
-        import networkx as nx
-    except ImportError as e:
+    if nx is None:
         raise ImportError(
             "plot_network requires networkx. Install it with: pip install networkx"
-        ) from e
-
-    from plotnine import aes, geom_point, geom_segment, geom_text, ggplot, labs
+        )
 
     layout_fn = getattr(nx, f"{layout}_layout", nx.spring_layout)
     pos = layout_fn(g)
@@ -1037,6 +1002,10 @@ def plot_tree(
 ) -> Any:
     """Phylogenetic tree with per-sample points at the tips.
 
+    R reference: plot_tree(physeq, method, color, shape, size, label.tips,
+                           text.size, sizebase, base.spacing, min.abundance,
+                           ladderize, justify, plot.margin, title)
+
     Parameters
     ----------
     ps:
@@ -1084,24 +1053,7 @@ def plot_tree(
     -------
     plotnine.ggplot
 
-    R reference: plot_tree(physeq, method, color, shape, size, label.tips,
-                           text.size, sizebase, base.spacing, min.abundance,
-                           ladderize, justify, plot.margin, title)
     """
-    from plotnine import (
-        aes,
-        element_blank,
-        geom_point,
-        geom_segment,
-        geom_text,
-        ggplot,
-        labs,
-        scale_size_continuous,
-        scale_x_continuous,
-        theme,
-        theme_minimal,
-    )
-
     if getattr(ps, "phy_tree", None) is None:
         raise pyloseqValidationError(
             "plot_tree requires a phylogenetic tree on the Phyloseq object."
@@ -1131,8 +1083,6 @@ def plot_tree(
     # plotnine refuses to draw figures larger than 25 inches by default.
     # Trees with many tips routinely need more height, so lift the limit.
     if max(figure_size) > 25:
-        import plotnine as _pn  # noqa: PLC0415
-
         _pn.options.limitsize = False
 
     max_tip_x: float = max(tip_x.values()) if tip_x else 1.0
@@ -1172,8 +1122,6 @@ def plot_tree(
     # ------------------------------------------------------------------ #
     # sampledodge                                                         #
     # ------------------------------------------------------------------ #
-    from pyloseq._manipulation import psmelt  # noqa: PLC0415
-
     long_df = psmelt(ps)
     long_df = long_df[long_df["OTU"].isin(tip_x)].copy()
 
@@ -1304,8 +1252,6 @@ def _apply_tree_theme(
     figure_size: tuple[float, float] | None = None,
 ) -> Any:
     """Attach the standard minimal tree theme and optional title."""
-    from plotnine import element_blank, labs, theme, theme_minimal
-
     p = (
         p
         + theme_minimal()
@@ -1333,8 +1279,6 @@ def _tip_labels_layer(
     color: str | None,
 ) -> Any:
     """Add tip-label geom_text for treeonly mode."""
-    from plotnine import aes, geom_text
-
     if ps.tax_table is None:
         raise pyloseqValidationError(
             "label_tips was provided but Phyloseq has no tax_table."

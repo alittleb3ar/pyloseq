@@ -11,7 +11,8 @@ import pytest
 from skbio.stats.distance import DistanceMatrix
 
 import pyloseq
-from pyloseq import OtuTable, Phyloseq, PhyTree, distance, distance_method_list, unifrac
+from pyloseq import (OtuTable, Phyloseq, PhyTree, distance,
+                     distance_method_list, unifrac)
 from pyloseq.datasets.fixtures import load_esophagus_reference
 
 GOLDEN_DIR = Path("tests/golden")
