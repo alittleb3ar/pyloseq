@@ -362,7 +362,7 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     """
     from skbio.stats.ordination import OrdinationResults
 
-    otu_df = _otu_samples_rows(ps)          # samples x taxa
+    otu_df = _otu_samples_rows(ps)  # samples x taxa
     N = otu_df.values.astype(float)
 
     grand_total = N.sum()
@@ -371,8 +371,8 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
 
     # Relative frequencies and marginal masses
     P = N / grand_total
-    row_mass = P.sum(axis=1)                # sample masses (r)
-    col_mass = P.sum(axis=0)                # taxa masses (c)
+    row_mass = P.sum(axis=1)  # sample masses
+    col_mass = P.sum(axis=0)  # taxa masses
 
     # Drop all-zero rows/cols, which would divide by zero below
     keep_r = row_mass > 0
@@ -397,7 +397,13 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     rank = max(rank, 1)
     U, sigma, Vt = U[:, :rank], sigma[:rank], Vt[:rank, :]
 
-    eigvals = sigma ** 2                     # inertia per axis
+    eigvals = sigma**2
+
+    for k in range(U.shape[1]):
+        j = np.argmax(np.abs(U[:, k]))
+        if U[j, k] < 0:
+            U[:, k] = -U[:, k]
+            Vt[k, :] = -Vt[k, :]
 
     # Standard coordinates, then scale to principal coordinates.
     # Row (sample) standard coords:  U / sqrt(r);  Col (taxa): V / sqrt(c)
@@ -405,15 +411,13 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     col_std = Vt.T / np.sqrt(col_mass)[:, None]
 
     if scaling == 1:
-        sample_coords = row_std * sigma          # samples in principal coords
-        feature_coords = col_std                 # taxa in standard coords
+        sample_coords = row_std * sigma  # samples in principal coords
+        feature_coords = col_std  # taxa in standard coords
     elif scaling == 2:
-        sample_coords = row_std                   # samples in standard coords
-        feature_coords = col_std * sigma         # taxa in principal coords
+        sample_coords = row_std  # samples in standard coords
+        feature_coords = col_std * sigma  # taxa in principal coords
     else:
-        raise pyloseqValidationError(
-            f"scaling must be 1 or 2, got {scaling!r}"
-        )
+        raise pyloseqValidationError(f"scaling must be 1 or 2, got {scaling!r}")
 
     axis_names = [f"CA{i + 1}" for i in range(rank)]
     total_inertia = float(eigvals.sum())

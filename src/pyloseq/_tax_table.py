@@ -5,6 +5,8 @@ R reference: phyloseq::tax_table(object)
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 

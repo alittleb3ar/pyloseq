@@ -158,11 +158,7 @@ def plot_richness(
     se_map = {c[3:]: c for c in se_cols}  # measure name -> se column
 
     requested = measures or _ALL_MEASURES
-    measure_cols = [
-        c
-        for c in rich_df.columns
-        if c not in se_cols and c in requested
-    ]
+    measure_cols = [c for c in rich_df.columns if c not in se_cols and c in requested]
 
     # Join sample metadata
     if ps.sample_data is not None:
@@ -379,8 +375,13 @@ def plot_ordination(
         if just_df:
             return _split_df(ps, ord)
         return _plot_split(
-            ps, ord, color=color, shape=shape, label=label,
-            title=title, show_hull=show_hull,
+            ps,
+            ord,
+            color=color,
+            shape=shape,
+            label=label,
+            title=title,
+            show_hull=show_hull,
         )
 
     else:
@@ -533,8 +534,8 @@ def _plot_split(
     show_hull: bool = False,
 ) -> Any:
     """Split biplot: samples and taxa in side-by-side facets."""
-    from plotnine import (aes, facet_wrap, geom_point, geom_polygon,
-                          geom_text, ggplot, labs)
+    from plotnine import (aes, facet_wrap, geom_point, geom_polygon, geom_text,
+                          ggplot, labs)
 
     combined = _split_df(ps, ord)
     mapping: dict[str, str] = {"x": "Axis.1", "y": "Axis.2"}
@@ -656,9 +657,7 @@ def plot_heatmap(
     long_df["Sample"] = pd.Categorical(
         long_df["Sample"], categories=sample_order, ordered=True
     )
-    long_df["OTU"] = pd.Categorical(
-        long_df["OTU"], categories=taxa_order, ordered=True
-    )
+    long_df["OTU"] = pd.Categorical(long_df["OTU"], categories=taxa_order, ordered=True)
 
     p = (
         ggplot(long_df, aes(x="Sample", y="OTU", fill="Abundance"))
@@ -824,8 +823,7 @@ def plot_network(
             "plot_network requires networkx. Install it with: pip install networkx"
         ) from e
 
-    from plotnine import (aes, geom_point, geom_segment, geom_text, ggplot,
-                          labs)
+    from plotnine import aes, geom_point, geom_segment, geom_text, ggplot, labs
 
     layout_fn = getattr(nx, f"{layout}_layout", nx.spring_layout)
     pos = layout_fn(g)
@@ -850,13 +848,16 @@ def plot_network(
         else pd.DataFrame(columns=["x", "y", "xend", "yend"])
     )
 
-    mapping: dict[str, str] = {"x": "x", "y": "y"}
+    # Only x/y go in the global aes so that geom_segment (which uses its own
+    # data=edges_df) never inherits color/shape mappings that don't exist in
+    # edges_df and would cause a plotnine evaluation error.
+    point_mapping: dict[str, str] = {}
     if color and color in nodes_df.columns:
-        mapping["color"] = color
+        point_mapping["color"] = color
     if shape and shape in nodes_df.columns:
-        mapping["shape"] = shape
+        point_mapping["shape"] = shape
 
-    p = ggplot(nodes_df, aes(**mapping))
+    p = ggplot(nodes_df, aes(x="x", y="y"))
 
     if not edges_df.empty:
         p = p + geom_segment(
@@ -867,7 +868,8 @@ def plot_network(
             alpha=line_alpha,
         )
 
-    p = p + geom_point(size=point_size)
+    pt_aes = aes(**point_mapping) if point_mapping else None
+    p = p + geom_point(mapping=pt_aes, size=point_size)
 
     if label and label in nodes_df.columns:
         y_range = (nodes_df["y"].max() - nodes_df["y"].min()) or 1.0
@@ -888,54 +890,67 @@ def plot_network(
 # ---------------------------------------------------------------------------
 
 
+def _auto_text_size(n_tips: int) -> float:
+    """Scale text size based on tip count, approximating R's manytextsize."""
+    return float(max(1.5, min(6.0, 25.0 / max(n_tips, 1))))
+
+
 def _tree_layout(
     tree: Any,
     ladderize: bool | str = False,
-) -> tuple[pd.DataFrame, dict, dict, dict, dict, list]:
-    """Compute (x, y) for every node and the tree edges as segments.
+) -> tuple[pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, list]:
+    """Compute tree geometry and return separate edge and vertical-connector DataFrames.
 
-    x is cumulative branch length from the root; y is the leaf ordinal
-    (mean of children's y for internal nodes).  Returns the segments
-    DataFrame plus lookup tables used by :func:`plot_tree`.
+    Returns
+    -------
+    edge_df:
+        One row per tree edge (parent → child).
+        Columns: ``xleft`` (parent x), ``xright`` (child x), ``y`` (child y),
+        ``OTU`` (tip name for leaf edges, ``None`` for internal edges).
+    vert_df:
+        One row per internal node.
+        Columns: ``x``, ``vmin``, ``vmax`` (y-extent of children).
+    tip_x, tip_y, node_x, node_y:
+        Coordinate lookup dicts.
+    tip_order:
+        Tip names in display order (bottom → top).
     """
     if ladderize:
         direction = "right" if ladderize is True else ladderize
         for node in tree.postorder(include_self=True):
             if not node.is_tip():
                 node.children.sort(
-                    key=lambda c: sum(1 for _ in c.tips(include_self=True)),
+                    key=lambda c: sum(1 for _ in c.tips()),
                     reverse=(direction == "right"),
                 )
 
-    # Detect whether the tree has meaningful branch lengths
     has_lengths = any(
-        n.length is not None and n.length > 0
-        for n in tree.traverse(include_self=False)
+        n.length is not None and n.length > 0 for n in tree.traverse(include_self=False)
     )
 
-    tip_order: list[str] = [t.name for t in tree.tips(include_self=False)]
-    tip_y: dict[str, float] = {name: i for i, name in enumerate(tip_order)}
-
+    tip_order: list[str] = [t.name for t in tree.tips()]
+    tip_y: dict[str, float] = {name: float(i) for i, name in enumerate(tip_order)}
     tip_x: dict[str, float] = {}
     node_x: dict[int, float] = {}
     node_y: dict[int, float] = {}
 
     def _set_x(node: Any, parent_x: float = 0.0) -> None:
-        bl = node.length if node.length is not None else 0.0
-        if not has_lengths and node.parent is not None:
-            bl = 1.0
+        bl = (
+            (node.length or 0.0)
+            if has_lengths
+            else (1.0 if node.parent is not None else 0.0)
+        )
         x = parent_x + bl
-        if node.is_tip():
-            tip_x[node.name] = x
-        else:
-            node_x[id(node)] = x
+        (tip_x if node.is_tip() else node_x)[
+            node.name if node.is_tip() else id(node)
+        ] = x
         for child in node.children:
             _set_x(child, x)
 
     _set_x(tree)
 
-    def _y_of(node: Any) -> float:
-        return tip_y[node.name] if node.is_tip() else node_y[id(node)]
+    def _xof(node: Any) -> float:
+        return tip_x[node.name] if node.is_tip() else node_x[id(node)]
 
     def _set_y(node: Any) -> float:
         if node.is_tip():
@@ -947,27 +962,38 @@ def _tree_layout(
 
     _set_y(tree)
 
-    def _x_of(node: Any) -> float:
-        return tip_x[node.name] if node.is_tip() else node_x[id(node)]
+    def _yof(node: Any) -> float:
+        return tip_y[node.name] if node.is_tip() else node_y[id(node)]
 
-    segs: list[dict[str, float]] = []
-    # Horizontal segments from parent to each child
-    for node in tree.traverse(include_self=False):
-        x_p = _x_of(node.parent)
-        x_c = _x_of(node)
-        y_c = _y_of(node)
-        segs.append({"x": x_p, "y": y_c, "xend": x_c, "yend": y_c})
+    edges = [
+        {
+            "xleft": _xof(node.parent),
+            "xright": _xof(node),
+            "y": _yof(node),
+            "OTU": node.name if node.is_tip() else None,
+        }
+        for node in tree.traverse(include_self=False)
+    ]
 
-    # Vertical connectors at each internal node spanning its children
-    for node in tree.traverse(include_self=True):
-        if not node.is_tip() and node.children:
-            x_n = node_x[id(node)]
-            child_ys = [_y_of(c) for c in node.children]
-            segs.append(
-                {"x": x_n, "y": min(child_ys), "xend": x_n, "yend": max(child_ys)}
-            )
+    verts = [
+        {
+            "x": _xof(node),
+            "vmin": min(_yof(c) for c in node.children),
+            "vmax": max(_yof(c) for c in node.children),
+        }
+        for node in tree.traverse(include_self=True)
+        if not node.is_tip() and node.children
+    ]
 
-    return pd.DataFrame(segs), tip_x, tip_y, node_x, node_y, tip_order
+    return (
+        pd.DataFrame(edges),
+        pd.DataFrame(verts),
+        tip_x,
+        tip_y,
+        node_x,
+        node_y,
+        tip_order,
+    )
 
 
 def plot_tree(
@@ -977,11 +1003,14 @@ def plot_tree(
     shape: str | None = None,
     size: str | None = None,
     label_tips: str | None = None,
-    text_size: float = 5.0,
+    text_size: float | None = None,
     sizebase: float = 5.0,
     base_spacing: float = 0.02,
-    min_abundance: float = 0.0,
+    min_abundance: float = float("inf"),
     ladderize: bool | str = False,
+    justify: str = "jagged",
+    plot_margin: float = 0.2,
+    figure_size: tuple[float, float] | None = None,
     title: str | None = None,
 ) -> Any:
     """Phylogenetic tree with per-sample points at the tips.
@@ -994,27 +1023,38 @@ def plot_tree(
         ``"sampledodge"`` (default) draws one point per sample at each tip,
         offset rightward along x.  ``"treeonly"`` draws the tree alone.
     color:
-        Sample (sampledodge) or tax_table (taxa) column for point colour.
+        Sample metadata or ``tax_table`` column for point colour.
     shape:
         Sample metadata column for point shape.
     size:
-        ``"Abundance"`` to scale point size by abundance (the size legend
-        reports the original abundance breaks, not the log-transformed
-        values), any numeric metadata column, or ``None`` for fixed size.
+        ``"Abundance"`` to scale point size by log-transformed abundance,
+        any numeric metadata column, or ``None`` for fixed size.
     label_tips:
         ``tax_table`` column whose values label each tip (e.g. ``"Genus"``).
     text_size:
-        Font size for tip labels.
+        Font size for tip labels.  Auto-scaled from tip count when ``None``.
     sizebase:
-        Log base for abundance-to-size transform.
+        Log base for the abundance → size transform.
     base_spacing:
-        Fractional x-spacing between dodged points, as a fraction of the tree
-        x-range.
+        Fractional x-step between dodged sample points, as a proportion of
+        the maximum tip x value.
     min_abundance:
-        Drop sample points whose abundance is less than or equal to this
-        value (sampledodge only).
+        Abundance threshold for printing per-point text labels.  Default
+        ``inf`` suppresses all labels (matching R phyloseq).  Points
+        themselves are always shown for ``Abundance > 0``.
     ladderize:
-        ``False``, ``True``/``"right"``, or ``"left"``.
+        ``False``, ``True`` / ``"right"`` (most-speciose clade at top), or
+        ``"left"`` (most-speciose clade at bottom).
+    justify:
+        ``"jagged"`` (default) starts each tip's dodge column from its own x
+        position.  ``"left"`` aligns all dodge columns at the rightmost tip.
+    plot_margin:
+        Fractional right-margin added beyond the last dodged point so that
+        tip labels are not clipped.
+    figure_size:
+        ``(width, height)`` in inches.  When ``None`` (default), height is
+        auto-scaled from the tip count (``0.2 * n_tips``, min 6) and width
+        is fixed at 12.
     title:
         Plot title.
 
@@ -1024,11 +1064,11 @@ def plot_tree(
 
     R reference: plot_tree(physeq, method, color, shape, size, label.tips,
                            text.size, sizebase, base.spacing, min.abundance,
-                           ladderize, title)
+                           ladderize, justify, plot.margin, title)
     """
     from plotnine import (aes, element_blank, geom_point, geom_segment,
                           geom_text, ggplot, labs, scale_size_continuous,
-                          theme, theme_minimal)
+                          scale_x_continuous, theme, theme_minimal)
 
     if getattr(ps, "phy_tree", None) is None:
         raise pyloseqValidationError(
@@ -1038,74 +1078,144 @@ def plot_tree(
         raise pyloseqValidationError(
             f"Unknown plot_tree method '{method}'. Use 'sampledodge' or 'treeonly'."
         )
+    if justify not in ("jagged", "left"):
+        raise pyloseqValidationError(
+            f"Unknown justify '{justify}'. Use 'jagged' or 'left'."
+        )
 
-    segs_df, tip_x, tip_y, node_x, _node_y, tip_order = _tree_layout(
+    edge_df, vert_df, tip_x, tip_y, _node_x, _node_y, tip_order = _tree_layout(
         ps.phy_tree._tree, ladderize=ladderize
     )
 
-    all_x = list(tip_x.values()) + list(node_x.values())
-    x_range = (max(all_x) - min(all_x)) or 1.0
+    if figure_size is None:
+        figure_size = (12.0, max(6.0, 0.2 * len(tip_order)))
 
-    p = ggplot() + geom_segment(
-        data=segs_df, mapping=aes(x="x", y="y", xend="xend", yend="yend")
+    if text_size is None:
+        # Scale to fill each tip's row: (figure_height × 72 pt/in) / n_tips,
+        # halved for a comfortable line height, clamped to [3, 12] pt.
+        points_per_tip = (figure_size[1] * 72.0) / max(len(tip_order), 1)
+        text_size = float(max(3.0, min(12.0, points_per_tip / 2.0)))
+
+    # plotnine refuses to draw figures larger than 25 inches by default.
+    # Trees with many tips routinely need more height, so lift the limit.
+    if max(figure_size) > 25:
+        import plotnine as _pn  # noqa: PLC0415
+
+        _pn.options.limitsize = False
+
+    max_tip_x: float = max(tip_x.values()) if tip_x else 1.0
+
+    # Base tree: horizontal edges then vertical connectors (matching R layer order)
+    p = (
+        ggplot()
+        + geom_segment(
+            data=edge_df, mapping=aes(x="xleft", xend="xright", y="y", yend="y")
+        )
+        + geom_segment(
+            data=vert_df, mapping=aes(x="x", xend="x", y="vmin", yend="vmax")
+        )
     )
 
-    long_df: pd.DataFrame | None = None
-    last_offset = 0  # used to position tip labels past the dot column
+    # ------------------------------------------------------------------ #
+    # treeonly: optional tip labels, then return                          #
+    # ------------------------------------------------------------------ #
+    if method == "treeonly":
+        if label_tips:
+            _tip_labels_layer(
+                p,
+                ps,
+                label_tips,
+                tip_order,
+                tip_x,
+                tip_y,
+                x_offset=0.0,
+                text_size=text_size,
+                color=color,
+            )
+        p = _apply_tree_theme(p, title, figure_size)
+        if plot_margin > 0:
+            p = p + scale_x_continuous(limits=(-0.01, max_tip_x * (1.0 + plot_margin)))
+        return p
 
-    if method == "sampledodge":
-        from pyloseq._manipulation import psmelt  # noqa: PLC0415
+    # ------------------------------------------------------------------ #
+    # sampledodge                                                         #
+    # ------------------------------------------------------------------ #
+    from pyloseq._manipulation import psmelt  # noqa: PLC0415
 
-        long_df = psmelt(ps)
-        # Drop points at or below the threshold (<=), matching the documented
-        # behaviour.
-        long_df = long_df[long_df["Abundance"] > min_abundance].copy()
-        long_df = long_df[long_df["OTU"].isin(tip_x)]
+    long_df = psmelt(ps)
+    long_df = long_df[long_df["OTU"].isin(tip_x)].copy()
 
-        sample_order = sorted(long_df["Sample"].unique())
-        offset = {s: i + 1 for i, s in enumerate(sample_order)}
-        last_offset = len(sample_order)
+    # Jagged: strip zeros before assigning positions (R behaviour)
+    if justify == "jagged":
+        long_df = long_df[long_df["Abundance"] > 0].copy()
 
-        long_df["x_point"] = (
-            long_df["OTU"].map(tip_x)
-            + long_df["Sample"].map(offset) * base_spacing * x_range
+    # Fill NaN in discrete aesthetic columns so plotnine doesn't drop rows or
+    # crash the legend when a tax_table rank is unassigned for some taxa.
+    for _col in [color, shape]:
+        if _col and _col in long_df.columns and long_df[_col].isna().any():
+            long_df[_col] = long_df[_col].fillna("Unknown")
+
+    # Dodge sort order: key columns then sample name (mirrors R setkeyv)
+    sort_keys = ["OTU"] + [
+        k for k in [color, shape, size] if k and k in long_df.columns
+    ]
+    if len(sort_keys) == 1:
+        sort_keys.append("Sample")
+    long_df = long_df.sort_values(sort_keys, kind="stable").reset_index(drop=True)
+
+    # Per-OTU 1-based dodge index
+    long_df["_h_adj"] = long_df.groupby("OTU", sort=False, observed=True).cumcount() + 1
+
+    if justify == "jagged":
+        long_df["xdodge"] = (
+            long_df["OTU"].map(tip_x) + long_df["_h_adj"] * base_spacing * max_tip_x
         )
-        long_df["y_point"] = long_df["OTU"].map(tip_y)
+    else:
+        long_df["xdodge"] = max_tip_x + long_df["_h_adj"] * base_spacing * max_tip_x
+        # Left-justify: strip zeros AFTER position assignment (R behaviour)
+        long_df = long_df[long_df["Abundance"] > 0].copy()
 
-        mapping: dict[str, str] = {"x": "x_point", "y": "y_point"}
-        if color and color in long_df.columns:
-            mapping["color"] = color
-        if shape and shape in long_df.columns:
-            mapping["shape"] = shape
+    long_df["_y"] = long_df["OTU"].map(tip_y)
 
-        size_breaks = None
-        size_labels = None
-        if size == "Abundance":
-            # Transform for the visual radius, but compute legend breaks in
-            # the original abundance units so the legend is meaningful.
-            ab = long_df["Abundance"].clip(lower=1.0)
-            long_df["_size"] = np.log(ab) / np.log(sizebase)
-            mapping["size"] = "_size"
+    # Point mapping: R maps both color and fill to the same variable
+    pt_map: dict[str, str] = {"x": "xdodge", "y": "_y"}
+    if color and color in long_df.columns:
+        pt_map["color"] = color
+        pt_map["fill"] = color
+    if shape and shape in long_df.columns:
+        pt_map["shape"] = shape
 
-            raw_min = float(long_df["Abundance"].min())
-            raw_max = float(long_df["Abundance"].max())
-            raw_breaks = np.unique(
-                np.linspace(max(raw_min, 1.0), max(raw_max, 1.0), num=4).round()
-            )
-            size_breaks = list(np.log(np.clip(raw_breaks, 1.0, None)) / np.log(sizebase))
-            size_labels = [f"{int(b)}" for b in raw_breaks]
-        elif size and size in long_df.columns:
-            mapping["size"] = size
+    if size == "Abundance":
+        ab = long_df["Abundance"].clip(lower=1.0)
+        long_df["_size"] = np.log(ab) / np.log(sizebase)
+        pt_map["size"] = "_size"
+        raw_min = float(long_df["Abundance"].min())
+        raw_max = float(long_df["Abundance"].max())
+        raw_breaks = np.unique(
+            np.linspace(max(raw_min, 1.0), max(raw_max, 1.0), num=4).round()
+        )
+        p = p + geom_point(data=long_df, mapping=aes(**pt_map))
+        p = p + scale_size_continuous(
+            name="Abundance",
+            breaks=list(np.log(raw_breaks.clip(1.0)) / np.log(sizebase)),
+            labels=[f"{int(b)}" for b in raw_breaks],
+        )
+    elif size and size in long_df.columns:
+        pt_map["size"] = size
+        p = p + geom_point(data=long_df, mapping=aes(**pt_map))
+    else:
+        p = p + geom_point(data=long_df, mapping=aes(**pt_map))
 
-        p = p + geom_point(data=long_df, mapping=aes(**mapping))
-        if size == "Abundance":
-            p = p + scale_size_continuous(
-                name="Abundance",
-                breaks=size_breaks,
-                labels=size_labels,
-            )
+    # Abundance text labels (only where Abundance >= min_abundance)
+    if long_df["Abundance"].ge(min_abundance).any():
+        lab_df = long_df[long_df["Abundance"] >= min_abundance]
+        p = p + geom_text(
+            data=lab_df,
+            mapping=aes(x="xdodge", y="_y", label="Abundance"),
+            size=text_size,
+        )
 
-    # Tip labels
+    # Tip labels: anchored at the rightmost dodged point for each tip
     if label_tips:
         if ps.tax_table is None:
             raise pyloseqValidationError(
@@ -1116,24 +1226,53 @@ def plot_tree(
             raise pyloseqValidationError(
                 f"label_tips column '{label_tips}' not found in tax_table."
             )
-        label_x_offset = (last_offset + 1) * base_spacing * x_range
-        tip_df = pd.DataFrame(
+        max_xdodge_per_otu: pd.Series = long_df.groupby("OTU")["xdodge"].max()
+        # Null out color if it is a sample variable (R behaviour: per-tip labels
+        # should not be colored by a per-sample variable)
+        label_color = color
+        if color and ps.sample_data is not None and color in ps.sample_variables:
+            label_color = None
+        tip_lab_df = pd.DataFrame(
             {
                 "OTU": tip_order,
-                "x_label": [tip_x[t] + label_x_offset for t in tip_order],
-                "y_tip": [tip_y[t] for t in tip_order],
+                "x_lab": [max_xdodge_per_otu.get(t, tip_x[t]) for t in tip_order],
+                "_y": [tip_y[t] for t in tip_order],
                 "_label": [
                     tax_df.loc[t, label_tips] if t in tax_df.index else ""
                     for t in tip_order
                 ],
             }
         )
+        lab_map: dict[str, str] = {"x": "x_lab", "y": "_y", "label": "_label"}
+        if label_color and label_color in tip_lab_df.columns:
+            lab_map["color"] = label_color
         p = p + geom_text(
-            data=tip_df,
-            mapping=aes(x="x_label", y="y_tip", label="_label"),
+            data=tip_lab_df,
+            mapping=aes(**lab_map),
+            nudge_x=base_spacing * max_tip_x,
             ha="left",
             size=text_size,
         )
+
+    # X-axis limits: start from the farthest dodged point, extend by the label
+    # nudge so text start positions are inside the plot, then add plot_margin
+    # for breathing room (text itself extends rightward from the anchor).
+    max_x = max(max_tip_x, float(long_df["xdodge"].max()))
+    if label_tips:
+        max_x += base_spacing * max_tip_x  # include the nudge offset
+    max_x *= 1.0 + plot_margin
+    p = p + scale_x_continuous(limits=(-0.01, max_x))
+
+    return _apply_tree_theme(p, title, figure_size)
+
+
+def _apply_tree_theme(
+    p: Any,
+    title: str | None,
+    figure_size: tuple[float, float] | None = None,
+) -> Any:
+    """Attach the standard minimal tree theme and optional title."""
+    from plotnine import element_blank, labs, theme, theme_minimal
 
     p = (
         p
@@ -1142,9 +1281,51 @@ def plot_tree(
             axis_text_y=element_blank(),
             axis_ticks_major_y=element_blank(),
             panel_grid=element_blank(),
+            figure_size=figure_size,
         )
     )
     if title:
         p = p + labs(title=title)
-
     return p
+
+
+def _tip_labels_layer(
+    p: Any,
+    ps: Any,
+    label_tips: str,
+    tip_order: list,
+    tip_x: dict,
+    tip_y: dict,
+    x_offset: float,
+    text_size: float,
+    color: str | None,
+) -> Any:
+    """Add tip-label geom_text for treeonly mode."""
+    from plotnine import aes, geom_text
+
+    if ps.tax_table is None:
+        raise pyloseqValidationError(
+            "label_tips was provided but Phyloseq has no tax_table."
+        )
+    tax_df = ps.tax_table.to_frame()
+    if label_tips not in tax_df.columns:
+        raise pyloseqValidationError(
+            f"label_tips column '{label_tips}' not found in tax_table."
+        )
+    tip_lab_df = pd.DataFrame(
+        {
+            "OTU": tip_order,
+            "x_lab": [tip_x[t] + x_offset for t in tip_order],
+            "_y": [tip_y[t] for t in tip_order],
+            "_label": [
+                tax_df.loc[t, label_tips] if t in tax_df.index else ""
+                for t in tip_order
+            ],
+        }
+    )
+    lab_map: dict[str, str] = {"x": "x_lab", "y": "_y", "label": "_label"}
+    if color and color in tip_lab_df.columns:
+        lab_map["color"] = color
+    return p + geom_text(
+        data=tip_lab_df, mapping=aes(**lab_map), ha="left", size=text_size
+    )
