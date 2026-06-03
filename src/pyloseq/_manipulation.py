@@ -116,14 +116,14 @@ def prune_taxa(
 ) -> Phyloseq:
     """Return a new Phyloseq containing only the specified taxa.
 
+    R reference: prune_taxa(taxa, x)
+
     Parameters
     ----------
     names:
         Taxa to keep. Order is preserved; names absent from ``ps`` are ignored.
     ps:
         Source ``Phyloseq`` object.
-
-    R reference: prune_taxa(taxa, x)
     """
     taxa_set = set(ps.taxa_names)
     keep = [n for n in names if n in taxa_set]
@@ -153,14 +153,14 @@ def prune_samples(
 ) -> Phyloseq:
     """Return a new Phyloseq containing only the specified samples.
 
+    R reference: prune_samples(samples, x)
+
     Parameters
     ----------
     names:
         Samples to keep. Order is preserved; names absent from ``ps`` are ignored.
     ps:
         Source ``Phyloseq`` object.
-
-    R reference: prune_samples(samples, x)
     """
     sample_set = set(ps.sample_names)
     keep = [n for n in names if n in sample_set]
@@ -188,6 +188,8 @@ def subset_samples(
 ) -> Phyloseq:
     """Return a new Phyloseq with samples matching a filter expression.
 
+    R reference: subset_samples(physeq, ...)
+
     Parameters
     ----------
     ps:
@@ -208,8 +210,6 @@ def subset_samples(
     --------
     >>> subset_samples(ps, lambda s: s["SampleType"] == "Soil")
     >>> subset_samples(ps, 'SampleType == "Soil"')
-
-    R reference: subset_samples(physeq, ...)
     """
     if ps.sample_data is None:
         raise pyloseqValidationError("subset_samples requires sample_data")
@@ -233,6 +233,8 @@ def subset_taxa(
 ) -> Phyloseq:
     """Return a new Phyloseq with taxa matching a filter expression.
 
+    R reference: subset_taxa(physeq, ...)
+
     Parameters
     ----------
     ps:
@@ -251,8 +253,6 @@ def subset_taxa(
     --------
     >>> subset_taxa(ps, lambda t: t["Phylum"] == "Chlamydiae")
     >>> subset_taxa(ps, 'Phylum == "Chlamydiae"')
-
-    R reference: subset_taxa(physeq, ...)
     """
     if ps.tax_table is None:
         raise pyloseqValidationError("subset_taxa requires tax_table")
@@ -278,7 +278,7 @@ def subset_taxa(
 def kOverA(k: int, A: float) -> Callable[[pd.Series], bool]:
     """Return a predicate: True if >= k samples have abundance > A.
 
-    This is a closure factory matching R's ``genefilter::kOverA``.
+    R reference: kOverA(k, A)
 
     Parameters
     ----------
@@ -287,7 +287,7 @@ def kOverA(k: int, A: float) -> Callable[[pd.Series], bool]:
     A:
         Abundance threshold.
 
-    R reference: kOverA(k, A)
+    
     """
 
     def _predicate(x: pd.Series) -> bool:
@@ -301,6 +301,8 @@ def filter_taxa(
     predicate: Callable[[pd.Series], bool],
 ) -> Phyloseq:
     """Return a new Phyloseq containing only taxa that satisfy ``predicate``.
+
+    R reference: filter_taxa(physeq, flist, prune=TRUE)
 
     Parameters
     ----------
@@ -316,7 +318,7 @@ def filter_taxa(
     ``prune=FALSE`` behaviour (return the boolean mask without pruning), use
     :func:`taxa_filter_mask`.
 
-    R reference: filter_taxa(physeq, flist, prune=TRUE)
+    
     """
     df = _otu_taxa_rows(ps)
     keep_mask: pd.Series = df.apply(predicate, axis=1)
@@ -333,6 +335,8 @@ def taxa_filter_mask(
     Use this when you want to inspect the mask before pruning.
     To obtain a pruned ``Phyloseq`` directly, use :func:`filter_taxa`.
 
+    R reference: filter_taxa(physeq, flist, prune=FALSE)
+
     Parameters
     ----------
     ps:
@@ -340,8 +344,6 @@ def taxa_filter_mask(
     predicate:
         A callable accepting a ``pd.Series`` of abundances across all samples
         for one taxon, returning ``True`` to keep, ``False`` to drop.
-
-    R reference: filter_taxa(physeq, flist, prune=FALSE)
     """
     df = _otu_taxa_rows(ps)
     return df.apply(predicate, axis=1)
@@ -358,6 +360,8 @@ def transform_sample_counts(
 ) -> Phyloseq:
     """Apply a per-sample transformation to the abundance table.
 
+    R reference: transform_sample_counts(physeq, function(x) x / sum(x))
+
     Parameters
     ----------
     ps:
@@ -369,8 +373,6 @@ def transform_sample_counts(
     Examples
     --------
     >>> transform_sample_counts(ps, lambda x: x / x.sum())
-
-    R reference: transform_sample_counts(physeq, function(x) x / sum(x))
     """
     df = _otu_taxa_rows(ps)
     new_otu = OtuTable(df.apply(fn, axis=0), taxa_are_rows=True)
@@ -393,6 +395,8 @@ def rarefy_even_depth(
 ) -> Phyloseq:
     """Rarefy all samples to even sequencing depth by subsampling.
 
+    R reference: rarefy_even_depth(physeq, sample.size, rngseed, replace, trimOTUs, verbose)
+
     Parameters
     ----------
     ps:
@@ -414,7 +418,6 @@ def rarefy_even_depth(
     compat:
         Reserved for future R-compatible RNG mode; currently ignored.
 
-    R reference: rarefy_even_depth(physeq, sample.size, rngseed, replace, trimOTUs, verbose)
     """
     if compat is not None and compat != "r-vegan":
         raise ValueError(f"Unknown compat mode: {compat!r}. Use 'r-vegan' or None.")
@@ -585,6 +588,8 @@ def tax_glom(
     Taxa that share the same value at ``taxrank`` (and all coarser ranks) are
     summed; the most-abundant member's row is kept as the archetype.
 
+    R reference: tax_glom(physeq, taxrank, NArm, bad_empty)
+
     Parameters
     ----------
     ps:
@@ -596,8 +601,6 @@ def tax_glom(
         in ``bad_empty``.
     bad_empty:
         Values treated as missing at ``taxrank``.
-
-    R reference: tax_glom(physeq, taxrank, NArm, bad_empty)
     """
     if ps.tax_table is None:
         raise pyloseqValidationError("tax_glom requires a TaxTable")
@@ -690,6 +693,8 @@ def tip_glom(
     within-cluster distance is <= ``h``; each group is merged via
     :func:`merge_taxa`.
 
+    R reference: tip_glom(physeq, h, hcfun)
+
     Parameters
     ----------
     ps:
@@ -699,8 +704,6 @@ def tip_glom(
     hcfun:
         Linkage method passed to :func:`scipy.cluster.hierarchy.linkage`
         (e.g. ``"average"``, ``"complete"``, ``"ward"``).
-
-    R reference: tip_glom(physeq, h, hcfun)
     """
     from scipy.cluster.hierarchy import fcluster, linkage
     from scipy.spatial.distance import squareform
@@ -785,6 +788,8 @@ def merge_phyloseq(*objs: Phyloseq) -> Phyloseq:
     OTU abundances are summed for overlapping (taxa, sample) pairs.  The union
     of all taxa and all samples is included (filling zeros where absent).
 
+    R reference: merge_phyloseq(...)
+
     Parameters
     ----------
     *objs:
@@ -797,8 +802,6 @@ def merge_phyloseq(*objs: Phyloseq) -> Phyloseq:
     For the tree, the first non-null ``phy_tree`` is kept and pruned to the
     merged taxa by the constructor; differing trees across inputs are not
     reconciled.
-
-    R reference: merge_phyloseq(...)
     """
     from pyloseq._phyloseq import Phyloseq as _Phyloseq
 
@@ -877,6 +880,8 @@ def merge_samples(
     aggregated: numeric columns via ``fn`` (default :func:`numpy.mean`), other
     columns via mode.
 
+    R reference: merge_samples(x, group, fun)
+
     Parameters
     ----------
     ps:
@@ -893,7 +898,6 @@ def merge_samples(
     (e.g. a numeric subject ID) will be averaged into meaningless values; drop
     or stringify such columns before merging if that is not desired.
 
-    R reference: merge_samples(x, group, fun)
     """
     if ps.sample_data is None:
         raise pyloseqValidationError("merge_samples requires sample_data")
@@ -947,12 +951,13 @@ def psmelt(ps: Phyloseq) -> pd.DataFrame:
     Returns one row per (OTU, Sample) pair with columns:
     ``["OTU", "Sample", "Abundance", *sample_variables, *rank_names]``.
 
+    R reference: psmelt(physeq)
+
     Parameters
     ----------
     ps:
         Source ``Phyloseq`` object.
 
-    R reference: psmelt(physeq)
     """
     otu_df = _otu_taxa_rows(ps)
 

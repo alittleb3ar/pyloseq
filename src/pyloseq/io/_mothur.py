@@ -30,6 +30,8 @@ def read_mothur(
 ) -> Phyloseq:
     """Load mothur output files into a ``Phyloseq``.
 
+    R reference: phyloseq::import_mothur(...)
+
     Parameters
     ----------
     shared:
@@ -45,8 +47,6 @@ def read_mothur(
     cutoff:
         OTU similarity cutoff label (e.g. ``"0.03"``).  If ``None``,
         the first label in the file is used.
-
-    R reference: phyloseq::import_mothur(...)
     """
 
     otu_table: OtuTable | None = None

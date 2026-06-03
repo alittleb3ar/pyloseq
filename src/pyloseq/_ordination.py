@@ -43,6 +43,8 @@ def ordinate(
 ) -> OrdinationResults:
     """Perform multivariate ordination on a Phyloseq object.
 
+    R reference: ordinate(physeq, method, distance, formula, ...)
+
     Parameters
     ----------
     ps:
@@ -64,7 +66,6 @@ def ordinate(
     -------
     skbio.stats.ordination.OrdinationResults
 
-    R reference: ordinate(physeq, method, distance, formula, ...)
     """
     m = method.upper()
 
@@ -352,13 +353,14 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     components) via SVD. Returns sample and feature coordinates in the
     space spanned by the principal axes.
 
+    R reference: ordinate(physeq, "CA")  (vegan::cca with no constraints)
+
     Parameters
     ----------
     scaling:
         1 = row/sample scaling (samples at centroids of taxa),
         2 = column/taxa scaling. Matches vegan's ``scaling`` argument.
 
-    R reference: ordinate(physeq, "CA")  (vegan::cca with no constraints)
     """
     from skbio.stats.ordination import OrdinationResults
 

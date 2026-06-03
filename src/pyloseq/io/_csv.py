@@ -34,6 +34,8 @@ def read_csv(
 ) -> Phyloseq:
     """Load a plain-text count table (+ optional metadata files) into a Phyloseq.
 
+    R reference: phyloseq::phyloseq(otu_table(read.csv(otu_path), taxa_are_rows), ...)
+
     Parameters
     ----------
     otu_path:
@@ -54,8 +56,6 @@ def read_csv(
         (such files are always taxa-as-rows).
     sep:
         Field separator (default tab).
-
-    R reference: phyloseq::phyloseq(otu_table(read.csv(otu_path), taxa_are_rows), ...)
     """
     otu_df = pd.read_csv(str(otu_path), sep=sep, index_col=0)
 

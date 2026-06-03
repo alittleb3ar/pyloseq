@@ -80,6 +80,8 @@ def distance(
 ) -> DistanceMatrix:
     """Compute a pairwise distance (or dissimilarity) matrix.
 
+    R reference: distance(physeq, method, type, ...)
+
     Parameters
     ----------
     ps:
@@ -98,8 +100,6 @@ def distance(
     Returns
     -------
     skbio.stats.distance.DistanceMatrix
-
-    R reference: distance(physeq, method, type, ...)
     """
     if "type" in kwargs:
         warnings.warn(
@@ -145,6 +145,8 @@ def unifrac(
 ) -> DistanceMatrix:
     """Compute (weighted or unweighted) UniFrac distances.
 
+    R reference: UniFrac(physeq, weighted, normalized, parallel, fast)
+
     Parameters
     ----------
     ps:
@@ -159,8 +161,6 @@ def unifrac(
     Returns
     -------
     skbio.stats.distance.DistanceMatrix
-
-    R reference: UniFrac(physeq, weighted, normalized, parallel, fast)
     """
     from skbio.diversity import beta_diversity
 

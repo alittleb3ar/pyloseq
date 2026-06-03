@@ -31,6 +31,8 @@ def multi_tax_test(
 ) -> pd.DataFrame:
     """Test each taxon for differential abundance between two groups.
 
+    R reference: phyloseq::mt()
+
     Parameters
     ----------
     ps:
@@ -75,8 +77,6 @@ def multi_tax_test(
         If ``sample_data`` is missing, ``grouping_var`` is not found, the
         variable does not have exactly 2 distinct non-NaN levels, or either
         group has fewer than 2 samples.
-
-    R reference: phyloseq::mt()
     """
     if ps.sample_data is None:
         raise pyloseqValidationError("multi_tax_test requires sample_data")
