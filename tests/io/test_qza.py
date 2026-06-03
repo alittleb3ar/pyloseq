@@ -13,10 +13,6 @@ import yaml
 import pyloseq
 from pyloseq import Phyloseq
 
-pytestmark = pytest.mark.xfail(
-    reason="pyloseq.io._qza not yet implemented", strict=False
-)
-
 
 def _make_feature_table_qza(tmp_path: Path, ps: Phyloseq) -> Path:
     artifact_uuid = str(_uuid_mod.uuid4())

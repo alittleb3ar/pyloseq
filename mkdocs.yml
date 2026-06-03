@@ -28,6 +28,9 @@ theme:
 
 plugins:
   - search
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
   - mkdocstrings:
       handlers:
         python:
@@ -61,5 +64,7 @@ nav:
     - Plotting: api/plotting.md
     - Hypothesis Testing: api/hypothesis.md
     - Datasets: api/datasets.md
+  - Examples:
+    - McMurdie & Holmes (2013): notebooks/mcmurdie_holmes_2013.ipynb
   - Developer:
     - Golden Files: golden_files.md
