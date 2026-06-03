@@ -24,7 +24,6 @@ Requires Python 3.10+.
 | biom-format | 2.1 | BIOM file I/O |
 | h5py | 3.9 | BIOM v2 (HDF5) support |
 | pyarrow | 12 | Parquet I/O for golden files |
-| anndata | 0.10 | AnnData interop |
 | pyyaml | 6 | QIIME 2 metadata parsing |
 
 ## Hello world
