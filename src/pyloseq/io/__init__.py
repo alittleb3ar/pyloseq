@@ -1,7 +1,6 @@
 from pyloseq.io._biom import read_biom, write_biom
 from pyloseq.io._csv import read_csv, to_csv
-from pyloseq.io._mothur import (read_mothur, select_mothur_cutoff,
-                                show_mothur_cutoffs)
+from pyloseq.io._mothur import read_mothur, select_mothur_cutoff, show_mothur_cutoffs
 from pyloseq.io._qiime import read_qiime
 from pyloseq.io._qza import read_qza
 

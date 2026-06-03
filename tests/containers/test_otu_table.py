@@ -206,3 +206,59 @@ def test_duplicate_taxa_in_dataframe_raises() -> None:
     df = pd.DataFrame([[1, 2], [3, 4]], index=["OTU1", "OTU1"], columns=["S1", "S2"])
     with pytest.raises(ValueError):
         OtuTable(df)
+
+
+# ===========================================================================
+# Sparse / dense storage threshold
+# ===========================================================================
+
+
+def test_dense_matrix_uses_dense_storage() -> None:
+    """A fully dense matrix (no zeros) should be stored as a DataFrame, not CSR."""
+    df = pd.DataFrame(
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        index=["OTU1", "OTU2", "OTU3"],
+        columns=["S1", "S2", "S3"],
+        dtype=float,
+    )
+    ot = OtuTable(df, taxa_are_rows=True)
+    assert not ot._is_sparse, "Fully dense matrix should not use sparse storage"
+
+
+def test_sparse_matrix_uses_csr_storage() -> None:
+    """A matrix with density < 50% should be stored as CSR."""
+    data = np.zeros((10, 10), dtype=float)
+    data[0, 0] = 1.0  # 1% density — well below threshold
+    df = pd.DataFrame(
+        data,
+        index=[f"OTU{i}" for i in range(10)],
+        columns=[f"S{j}" for j in range(10)],
+    )
+    ot = OtuTable(df, taxa_are_rows=True)
+    assert ot._is_sparse, "Low-density matrix should use sparse (CSR) storage"
+
+
+def test_sparse_input_always_uses_csr_storage() -> None:
+    """scipy sparse input forces CSR storage regardless of density."""
+    import scipy.sparse as sp
+
+    dense = np.ones((4, 4), dtype=float)  # 100% density
+    mat = sp.csr_matrix(dense)
+    ot = OtuTable(mat, taxa_are_rows=True)
+    assert ot._is_sparse, "scipy sparse input should always be stored as CSR"
+
+
+def test_storage_choice_does_not_affect_values() -> None:
+    """Dense and sparse storage paths must produce identical to_dataframe() output."""
+    dense_data = np.eye(5, dtype=float)  # 20% density → sparse storage
+    sparse_data = np.ones((5, 5), dtype=float)  # 100% density → dense storage
+    taxa = [f"OTU{i}" for i in range(5)]
+    samples = [f"S{i}" for i in range(5)]
+    ot_sparse = OtuTable(
+        pd.DataFrame(dense_data, index=taxa, columns=samples), taxa_are_rows=True
+    )
+    ot_dense = OtuTable(
+        pd.DataFrame(sparse_data, index=taxa, columns=samples), taxa_are_rows=True
+    )
+    np.testing.assert_allclose(ot_sparse.to_dataframe().values, dense_data)
+    np.testing.assert_allclose(ot_dense.to_dataframe().values, sparse_data)

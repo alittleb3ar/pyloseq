@@ -145,11 +145,19 @@ def plot_richness(
 
     R reference: plot_richness(physeq, x, color, measures, title)
     """
-    from plotnine import (aes, element_text, facet_wrap, geom_boxplot,
-                          geom_errorbar, geom_point, ggplot, labs, theme)
+    from plotnine import (
+        aes,
+        element_text,
+        facet_wrap,
+        geom_boxplot,
+        geom_errorbar,
+        geom_point,
+        ggplot,
+        labs,
+        theme,
+    )
 
-    from pyloseq._diversity import (_ALL_MEASURES,  # noqa: PLC0415
-                                    estimate_richness)
+    from pyloseq._diversity import _ALL_MEASURES, estimate_richness  # noqa: PLC0415
 
     rich_df = estimate_richness(ps, measures=measures)
 
@@ -534,8 +542,15 @@ def _plot_split(
     show_hull: bool = False,
 ) -> Any:
     """Split biplot: samples and taxa in side-by-side facets."""
-    from plotnine import (aes, facet_wrap, geom_point, geom_polygon, geom_text,
-                          ggplot, labs)
+    from plotnine import (
+        aes,
+        facet_wrap,
+        geom_point,
+        geom_polygon,
+        geom_text,
+        ggplot,
+        labs,
+    )
 
     combined = _split_df(ps, ord)
     mapping: dict[str, str] = {"x": "Axis.1", "y": "Axis.2"}
@@ -618,8 +633,15 @@ def plot_heatmap(
     R reference: plot_heatmap(physeq, method, distance, trans, low, high,
                               na.value, title)
     """
-    from plotnine import (aes, element_text, geom_tile, ggplot, labs,
-                          scale_fill_gradient, theme)
+    from plotnine import (
+        aes,
+        element_text,
+        geom_tile,
+        ggplot,
+        labs,
+        scale_fill_gradient,
+        theme,
+    )
 
     from pyloseq._manipulation import psmelt  # noqa: PLC0415
     from pyloseq._ordination import ordinate  # noqa: PLC0415
@@ -1066,9 +1088,19 @@ def plot_tree(
                            text.size, sizebase, base.spacing, min.abundance,
                            ladderize, justify, plot.margin, title)
     """
-    from plotnine import (aes, element_blank, geom_point, geom_segment,
-                          geom_text, ggplot, labs, scale_size_continuous,
-                          scale_x_continuous, theme, theme_minimal)
+    from plotnine import (
+        aes,
+        element_blank,
+        geom_point,
+        geom_segment,
+        geom_text,
+        ggplot,
+        labs,
+        scale_size_continuous,
+        scale_x_continuous,
+        theme,
+        theme_minimal,
+    )
 
     if getattr(ps, "phy_tree", None) is None:
         raise pyloseqValidationError(

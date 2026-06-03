@@ -227,12 +227,12 @@ def test_single_sample_per_group_raises() -> None:
 
 def test_unknown_test_raises(ps_two_groups: Phyloseq) -> None:
     with pytest.raises(pyloseq.pyloseqValidationError, match="Unknown test"):
-        multi_tax_test(ps_two_groups, "Group", test="bad")  # type: ignore[arg-type]
+        multi_tax_test(ps_two_groups, "Group", test="bad")
 
 
 def test_unknown_method_raises(ps_two_groups: Phyloseq) -> None:
     with pytest.raises(pyloseq.pyloseqValidationError, match="Unknown method"):
-        multi_tax_test(ps_two_groups, "Group", method="bad")  # type: ignore[arg-type]
+        multi_tax_test(ps_two_groups, "Group", method="bad")
 
 
 # ---------------------------------------------------------------------------

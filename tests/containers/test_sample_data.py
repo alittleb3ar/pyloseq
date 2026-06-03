@@ -72,4 +72,4 @@ def test_eq_different_data() -> None:
 
 def test_non_dataframe_raises() -> None:
     with pytest.raises(TypeError):
-        SampleData({"x": [1]})  # type: ignore[arg-type]
+        SampleData({"x": [1]})

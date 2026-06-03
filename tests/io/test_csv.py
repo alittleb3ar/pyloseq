@@ -72,4 +72,4 @@ def test_csv_taxa_sums_match_r_reference(tmp_path: Path) -> None:
     golden = ref["taxa_sums"]
     rt_str = pd.Series(rt.values, index=rt.index.astype(str)).sort_index()
     golden_str = pd.Series(golden.values, index=golden.index.astype(str)).sort_index()
-    np.testing.assert_allclose(rt_str.values, golden_str.values, atol=1e-10)
+    np.testing.assert_allclose(rt_str.to_numpy(), golden_str.to_numpy(), atol=1e-10)

@@ -9,7 +9,6 @@ import skbio.tree
 
 from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
 
-
 # ---------------------------------------------------------------------------
 # Shared builder used by io fixtures
 # ---------------------------------------------------------------------------
