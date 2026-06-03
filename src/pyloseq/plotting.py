@@ -9,18 +9,36 @@ via the plot's ``.data`` attribute.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
 import plotnine as _pn
-from plotnine import aes, element_blank, element_text
+from plotnine import (
+    aes,
+    element_blank,
+    element_text,
+    facet_wrap,
+    geom_bar,
+    geom_boxplot,
+    geom_errorbar,
+    geom_line,
+    geom_point,
+    geom_polygon,
+    geom_segment,
+    geom_text,
+    geom_tile,
+    ggplot,
+    labs,
+    scale_fill_gradient,
+    scale_size_continuous,
+    scale_x_continuous,
+    theme,
+    theme_minimal,
+    xlab,
+    ylab,
+)
 from plotnine import facet_grid as pg_facet_grid
-from plotnine import (facet_wrap, geom_bar, geom_boxplot, geom_errorbar,
-                      geom_line, geom_point, geom_polygon, geom_segment,
-                      geom_text, geom_tile, ggplot, labs, scale_fill_gradient,
-                      scale_size_continuous, scale_x_continuous, theme,
-                      theme_minimal, xlab, ylab)
 from scipy.spatial import ConvexHull, QhullError
 
 try:
@@ -177,10 +195,7 @@ def plot_richness(
     sample_id_col = "_sample_id"
     rich_df[sample_id_col] = rich_df.index
 
-    if x == "samples":
-        x_col = sample_id_col
-    else:
-        x_col = x
+    x_col = sample_id_col if x == "samples" else x
 
     id_vars = [c for c in rich_df.columns if c not in measure_cols and c not in se_cols]
 
@@ -453,7 +468,7 @@ def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
 
     Groups with fewer than 3 points cannot form a hull and are skipped.
     """
-    rows: list[dict] = []
+    rows: list[dict[str, Any]] = []
     for group, sub in df.groupby(group_col, sort=False, observed=True):
         pts = sub[["Axis.1", "Axis.2"]].values
         if len(pts) < 3:
@@ -522,7 +537,7 @@ def _split_df(ps: Phyloseq, ord: Any) -> pd.DataFrame:
             feat_df = feat_df.join(ps.tax_table.to_frame(), how="left")
         frames.append(feat_df)
 
-    return pd.concat(frames).reset_index()
+    return cast(pd.DataFrame, pd.concat(frames).reset_index())
 
 
 def _plot_split(
@@ -618,8 +633,8 @@ def plot_heatmap(
 
     """
     # Ordinate to get sample AND taxa ordering.
-    sample_order: list = list(ps.sample_names)
-    taxa_order: list = list(ps.taxa_names)
+    sample_order: list[str] = list(ps.sample_names)
+    taxa_order: list[str] = list(ps.taxa_names)
     try:
         ord_result = ordinate(ps, method=method, distance=distance)
         first_axis = ord_result.samples.columns[0]
@@ -885,7 +900,15 @@ def _auto_text_size(n_tips: int) -> float:
 def _tree_layout(
     tree: Any,
     ladderize: bool | str = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, list]:
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    dict[str, float],
+    dict[str, float],
+    dict[int, float],
+    dict[int, float],
+    list[str],
+]:
     """Compute tree geometry and return separate edge and vertical-connector DataFrames.
 
     Returns
@@ -928,9 +951,10 @@ def _tree_layout(
             else (1.0 if node.parent is not None else 0.0)
         )
         x = parent_x + bl
-        (tip_x if node.is_tip() else node_x)[
-            node.name if node.is_tip() else id(node)
-        ] = x
+        if node.is_tip():
+            tip_x[node.name] = x
+        else:
+            node_x[id(node)] = x
         for child in node.children:
             _set_x(child, x)
 
@@ -1054,7 +1078,7 @@ def plot_tree(
     plotnine.ggplot
 
     """
-    if getattr(ps, "phy_tree", None) is None:
+    if ps.phy_tree is None:
         raise pyloseqValidationError(
             "plot_tree requires a phylogenetic tree on the Phyloseq object."
         )
@@ -1271,9 +1295,9 @@ def _tip_labels_layer(
     p: Any,
     ps: Any,
     label_tips: str,
-    tip_order: list,
-    tip_x: dict,
-    tip_y: dict,
+    tip_order: list[str],
+    tip_x: dict[str, float],
+    tip_y: dict[str, float],
     x_offset: float,
     text_size: float,
     color: str | None,

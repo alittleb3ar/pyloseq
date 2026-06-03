@@ -1,6 +1,4 @@
-"""Core Phyloseq container
-
-"""
+"""Core Phyloseq container"""
 
 from __future__ import annotations
 
@@ -314,11 +312,6 @@ class Phyloseq:
         return _ordinate(
             self, method=method, distance=distance, formula=formula, **kwargs
         )
-
-
-# ------------------------------------------------------------------
-# Validator suite (Ticket 1.5)
-# ------------------------------------------------------------------
 
 
 def _emit_prune_warning(n_drop: int, unit: str, context: str) -> None:

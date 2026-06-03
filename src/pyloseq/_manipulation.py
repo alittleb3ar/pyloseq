@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 import pandas as pd
@@ -51,7 +51,7 @@ def _rebuild_ps(
         tax=_keep(tax, ps.tax_table.copy() if ps.tax_table is not None else None),
         tree=_keep(tree, ps.phy_tree.copy() if ps.phy_tree is not None else None),
         refseq=_keep(refseq, ps.refseq.copy() if ps.refseq is not None else None),
-        metadata=_keep(metadata, dict(ps.metadata)),  # type: ignore[arg-type]
+        metadata=_keep(metadata, dict(ps.metadata)),
     )
 
 
@@ -101,11 +101,6 @@ def _otu_samples_rows(ps: Phyloseq) -> pd.DataFrame:
     if ps.otu_table.taxa_are_rows:
         df = df.T
     return df
-
-
-# ---------------------------------------------------------------------------
-# Ticket 3.2 — prune_samples, prune_taxa
-# ---------------------------------------------------------------------------
 
 
 def prune_taxa(
@@ -173,11 +168,6 @@ def prune_samples(
         new_sam = SampleData(sam_df.reindex(keep_idx))
 
     return _rebuild_ps(ps, new_otu, sam=new_sam)
-
-
-# ---------------------------------------------------------------------------
-# Ticket 3.1 — subset_samples, subset_taxa
-# ---------------------------------------------------------------------------
 
 
 def subset_samples(
@@ -268,11 +258,6 @@ def subset_taxa(
     return prune_taxa(keep, ps)
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.3 — filter_taxa, kOverA
-# ---------------------------------------------------------------------------
-
-
 def kOverA(k: int, A: float) -> Callable[[pd.Series], bool]:
     """Return a predicate: True if >= k samples have abundance > A.
 
@@ -347,11 +332,6 @@ def taxa_filter_mask(
     return df.apply(predicate, axis=1)
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.4 — transform_sample_counts
-# ---------------------------------------------------------------------------
-
-
 def transform_sample_counts(
     ps: Phyloseq,
     fn: Callable[[pd.Series], pd.Series],
@@ -375,11 +355,6 @@ def transform_sample_counts(
     df = _otu_taxa_rows(ps)
     new_otu = OtuTable(df.apply(fn, axis=0), taxa_are_rows=True)
     return _rebuild_ps(ps, new_otu)
-
-
-# ---------------------------------------------------------------------------
-# Ticket 3.5 — rarefy_even_depth
-# ---------------------------------------------------------------------------
 
 
 def rarefy_even_depth(
@@ -505,11 +480,6 @@ def rarefy_even_depth(
     )
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.8 — merge_taxa
-# ---------------------------------------------------------------------------
-
-
 def merge_taxa(
     ps: Phyloseq,
     eqtaxa: list[str],
@@ -569,11 +539,6 @@ def merge_taxa(
         tree=new_tree,
         refseq=_filter_refseq(ps, surviving_taxa_merge),
     )
-
-
-# ---------------------------------------------------------------------------
-# Ticket 3.6 — tax_glom
-# ---------------------------------------------------------------------------
 
 
 def tax_glom(
@@ -676,11 +641,6 @@ def tax_glom(
     )
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.7 — tip_glom
-# ---------------------------------------------------------------------------
-
-
 def tip_glom(
     ps: Phyloseq,
     h: float = 0.2,
@@ -776,11 +736,6 @@ def tip_glom(
     )
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.8 — merge_phyloseq, merge_samples
-# ---------------------------------------------------------------------------
-
-
 def merge_phyloseq(*objs: Phyloseq) -> Phyloseq:
     """Merge two or more Phyloseq objects into one.
 
@@ -845,6 +800,7 @@ def merge_phyloseq(*objs: Phyloseq) -> Phyloseq:
         merged_seqs: dict[str, skbio.DNA] = {}
         for ps in objs_with_refseq:
             rs = ps.refseq
+            assert rs is not None
             for name in rs.taxa_names:
                 if name not in merged_seqs:  # first-wins
                     merged_seqs[name] = rs[name]
@@ -939,11 +895,6 @@ def merge_samples(
     return _rebuild_ps(ps, new_otu, sam=new_sam)
 
 
-# ---------------------------------------------------------------------------
-# Ticket 3.9 — psmelt
-# ---------------------------------------------------------------------------
-
-
 def psmelt(ps: Phyloseq) -> pd.DataFrame:
     """Melt a Phyloseq into a long-form tidy DataFrame.
 
@@ -972,4 +923,4 @@ def psmelt(ps: Phyloseq) -> pd.DataFrame:
         tax_df = ps.tax_table.to_frame()
         long = long.merge(tax_df, left_on="OTU", right_index=True, how="left")
 
-    return long.reset_index(drop=True)
+    return cast(pd.DataFrame, long.reset_index(drop=True))

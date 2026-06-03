@@ -6,10 +6,14 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from pyloseq.datasets import (_load_dataset, load_enterotype_reference,
-                              load_esophagus_reference,
-                              load_global_patterns_reference, load_golden,
-                              load_soilrep_reference)
+from pyloseq.datasets import (
+    _load_dataset,
+    load_enterotype_reference,
+    load_esophagus_reference,
+    load_global_patterns_reference,
+    load_golden,
+    load_soilrep_reference,
+)
 
 
 def test_testing_module_importable() -> None:

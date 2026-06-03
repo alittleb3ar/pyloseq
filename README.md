@@ -101,7 +101,6 @@ plot_ordination(ps, ord_result, color="SampleType").draw()
 | biom-format | 2.1 |
 | h5py | 3.9 |
 | pyarrow | 12 |
-| anndata | 0.10 |
 | pyyaml | 6 |
 
 ## Documentation
