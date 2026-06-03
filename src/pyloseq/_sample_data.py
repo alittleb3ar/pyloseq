@@ -1,6 +1,4 @@
-"""Per-sample metadata container.
-
-"""
+"""Per-sample metadata container."""
 
 from __future__ import annotations
 
@@ -54,7 +52,7 @@ class SampleData:
 
         R reference: as(sample_data(x), "data.frame")
         """
-        return self._df.copy()
+        return cast(pd.DataFrame, self._df.copy())
 
     def copy(self) -> SampleData:
         """Return a deep copy of this SampleData."""

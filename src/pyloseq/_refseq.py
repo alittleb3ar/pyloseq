@@ -1,6 +1,4 @@
-"""Reference sequence container (DNA sequences keyed by taxon ID).
-
-"""
+"""Reference sequence container (DNA sequences keyed by taxon ID)."""
 
 from __future__ import annotations
 

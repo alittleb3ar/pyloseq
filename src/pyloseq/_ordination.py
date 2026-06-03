@@ -1,11 +1,9 @@
-"""Ordination dispatcher mirroring R phyloseq::ordinate.
-
-"""
+"""Ordination dispatcher mirroring R phyloseq::ordinate."""
 
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -184,7 +182,7 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
             proportion_explained=pd.Series([np.nan] * n_dims, index=col_names),
         )
         # Attach stress as an attribute (OrdinationResults has no native slot).
-        result.stress = stress  # type: ignore[attr-defined]
+        result.stress = stress
         return result
     except ImportError:
         pass
@@ -247,7 +245,7 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
         )
     sub = sam_df[terms]
     # Dummy-encode categorical/object columns so RDA/CCA get numeric input
-    return pd.get_dummies(sub, drop_first=True).astype(float)
+    return cast(pd.DataFrame, pd.get_dummies(sub, drop_first=True).astype(float))
 
 
 def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:

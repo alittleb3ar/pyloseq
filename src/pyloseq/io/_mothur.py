@@ -142,7 +142,7 @@ def _to_numeric_frame(
                 f"for sample {first_label!r} in {source}{label_hint}"
             )
         out[col] = converted
-    return pd.DataFrame(out, index=df.index).astype(float)
+    return cast(pd.DataFrame, pd.DataFrame(out, index=df.index).astype(float))
 
 
 def _read_shared(path: Path, cutoff: str | None) -> pd.DataFrame:

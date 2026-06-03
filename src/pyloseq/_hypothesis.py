@@ -8,7 +8,7 @@ Westfall-Young step-down FWER procedure that R's multtest::mt.minP uses.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -129,16 +129,19 @@ def multi_tax_test(
     else:
         adjp = _adjust_pvalues(rawp, method=method)
 
-    return pd.DataFrame(
-        {
-            "statistic": stats,
-            "rawp": rawp,
-            "adjp": adjp,
-            f"mean_{g1_label}": a.mean(axis=1),
-            f"mean_{g2_label}": b.mean(axis=1),
-        },
-        index=otu_df.index,
-    ).sort_values("adjp")
+    return cast(
+        pd.DataFrame,
+        pd.DataFrame(
+            {
+                "statistic": stats,
+                "rawp": rawp,
+                "adjp": adjp,
+                f"mean_{g1_label}": a.mean(axis=1),
+                f"mean_{g2_label}": b.mean(axis=1),
+            },
+            index=otu_df.index,
+        ).sort_values("adjp"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +194,7 @@ def _adjust_pvalues(pvals: np.ndarray, method: str) -> np.ndarray:
         )
 
     if method == "bonferroni":
-        return np.minimum(pvals * len(pvals), 1.0)
+        return cast(np.ndarray, np.minimum(pvals * len(pvals), 1.0))
 
     if method == "holm":
         return _holm(pvals)

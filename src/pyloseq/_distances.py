@@ -1,6 +1,4 @@
-"""Beta diversity distances, UniFrac, and the distance dispatcher.
-
-"""
+"""Beta diversity distances, UniFrac, and the distance dispatcher."""
 
 from __future__ import annotations
 

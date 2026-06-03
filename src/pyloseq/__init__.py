@@ -15,9 +15,9 @@ from pyloseq._refseq import RefSeq
 from pyloseq._sample_data import SampleData
 from pyloseq._tax_table import TaxTable
 from pyloseq._tree import PhyTree
-from pyloseq.io import (read_biom, read_csv, read_mothur, read_qiime,
+from pyloseq.io import (read_biom, read_csv, read_mothur, read_qiime, read_qza,
                         select_mothur_cutoff, show_mothur_cutoffs, to_csv,
-                        write_biom)
+                        write_biom, write_qza)
 from pyloseq.plotting import (make_network, plot_bar, plot_heatmap,
                               plot_network, plot_ordination, plot_richness,
                               plot_tree)
@@ -57,7 +57,9 @@ __all__ = [
     "show_mothur_cutoffs",
     "select_mothur_cutoff",
     "read_csv",
+    "read_qza",
     "to_csv",
+    "write_qza",
     "plot_bar",
     "plot_heatmap",
     "plot_network",

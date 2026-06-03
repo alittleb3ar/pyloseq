@@ -1,6 +1,4 @@
-"""Phylogenetic tree container wrapping scikit-bio TreeNode.
-
-"""
+"""Phylogenetic tree container wrapping scikit-bio TreeNode."""
 
 from __future__ import annotations
 
