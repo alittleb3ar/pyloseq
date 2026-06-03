@@ -1,5 +1,7 @@
 # pyloseq
 
+**[Documentation →](https://alittleb3ar.github.io/pyloseq/)**
+
 A Python port of the R/Bioconductor [phyloseq](https://joey711.github.io/phyloseq/) package, built on the PyData stack. pyloseq represents microbiome data as a single object that bundles an OTU/feature table with sample metadata, taxonomic annotations, a phylogenetic tree, and reference sequences. All analysis functions operate on that object directly.
 
 Designed for researchers migrating 16S/ITS workflows from R to Python. Every public function includes an `R reference:` block in its docstring.
@@ -103,21 +105,10 @@ plot_ordination(ps, ord_result, color="SampleType").draw()
 | pyarrow | 12 |
 | pyyaml | 6 |
 
-## Documentation
-
-Full API reference and usage guide: [docs](docs/)
-
-To serve locally:
-
-```bash
-pip install -e ".[dev]"
-mkdocs serve
-```
-
 ## Development
 
 ```bash
-git clone https://github.com/mdonovan/pyloseq
+git clone https://github.com/alittleb3ar/pyloseq
 cd pyloseq
 pip install -e ".[dev]"
 pytest
