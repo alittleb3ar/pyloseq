@@ -14,13 +14,31 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import pandas as pd
 import plotnine as _pn
-from plotnine import aes, element_blank, element_text
+from plotnine import (
+    aes,
+    element_blank,
+    element_text,
+    facet_wrap,
+    geom_bar,
+    geom_boxplot,
+    geom_errorbar,
+    geom_line,
+    geom_point,
+    geom_polygon,
+    geom_segment,
+    geom_text,
+    geom_tile,
+    ggplot,
+    labs,
+    scale_fill_gradient,
+    scale_size_continuous,
+    scale_x_continuous,
+    theme,
+    theme_minimal,
+    xlab,
+    ylab,
+)
 from plotnine import facet_grid as pg_facet_grid
-from plotnine import (facet_wrap, geom_bar, geom_boxplot, geom_errorbar,
-                      geom_line, geom_point, geom_polygon, geom_segment,
-                      geom_text, geom_tile, ggplot, labs, scale_fill_gradient,
-                      scale_size_continuous, scale_x_continuous, theme,
-                      theme_minimal, xlab, ylab)
 from scipy.spatial import ConvexHull, QhullError
 
 try:

@@ -12,9 +12,20 @@ import skbio
 import skbio.tree
 
 import pyloseq
-from pyloseq import (OtuTable, Phyloseq, PhyTree, RefSeq, SampleData, TaxTable,
-                     merge_phyloseq, merge_samples, merge_taxa, psmelt,
-                     tax_glom, tip_glom)
+from pyloseq import (
+    OtuTable,
+    Phyloseq,
+    PhyTree,
+    RefSeq,
+    SampleData,
+    TaxTable,
+    merge_phyloseq,
+    merge_samples,
+    merge_taxa,
+    psmelt,
+    tax_glom,
+    tip_glom,
+)
 from pyloseq.datasets.fixtures import load_global_patterns_reference
 
 GOLDEN_DIR = Path("tests/golden")

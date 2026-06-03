@@ -11,8 +11,15 @@ import pytest
 from skbio.stats.ordination import OrdinationResults
 
 import pyloseq
-from pyloseq import (OtuTable, Phyloseq, PhyTree, SampleData, TaxTable,
-                     distance, ordinate)
+from pyloseq import (
+    OtuTable,
+    Phyloseq,
+    PhyTree,
+    SampleData,
+    TaxTable,
+    distance,
+    ordinate,
+)
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq.datasets.fixtures import load_esophagus_reference
 
