@@ -1,6 +1,5 @@
 """Per-sample metadata container.
 
-R reference: phyloseq::sample_data(object)
 """
 
 from __future__ import annotations

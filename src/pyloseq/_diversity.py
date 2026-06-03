@@ -1,6 +1,5 @@
 """Alpha diversity estimation, mirroring R phyloseq/vegan's estimate_richness.
 
-R reference: phyloseq::estimate_richness(physeq, split, measures)
 """
 
 from __future__ import annotations

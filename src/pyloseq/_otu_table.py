@@ -1,6 +1,5 @@
 """OTU/feature abundance table container.
 
-R reference: phyloseq::otu_table(object)
 """
 
 from __future__ import annotations

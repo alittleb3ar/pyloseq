@@ -1,8 +1,6 @@
 """Data manipulation functions mirroring R phyloseq's pre-processing API.
 
 All functions return new ``Phyloseq`` objects; inputs are never mutated.
-
-R reference: phyloseq vignette "Preprocessing"
 """
 
 from __future__ import annotations
@@ -521,6 +519,8 @@ def merge_taxa(
 
     Abundances are summed; the archetype's taxonomy row is retained.
 
+    R reference: merge_taxa(x, eqtaxa, archetype)
+
     Parameters
     ----------
     ps:
@@ -531,7 +531,6 @@ def merge_taxa(
         The taxon whose metadata row is retained. Defaults to the most-abundant
         member (sum across all samples).
 
-    R reference: merge_taxa(x, eqtaxa, archetype)
     """
     df = _otu_taxa_rows(ps)
     present = [t for t in eqtaxa if t in df.index]

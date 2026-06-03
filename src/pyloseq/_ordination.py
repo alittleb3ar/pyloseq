@@ -1,6 +1,5 @@
 """Ordination dispatcher mirroring R phyloseq::ordinate.
 
-R reference: phyloseq::ordinate(physeq, method, distance, formula, ...)
 """
 
 from __future__ import annotations

@@ -1,7 +1,5 @@
 """Beta diversity distances, UniFrac, and the distance dispatcher.
 
-R reference: phyloseq::distance(physeq, method, type, ...)
-             phyloseq::UniFrac(physeq, weighted, normalized, parallel, fast)
 """
 
 from __future__ import annotations

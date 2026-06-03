@@ -4,7 +4,6 @@ Implements per-taxon tests for comparing two groups, with several
 multiple-testing correction options including the permutation-based
 Westfall-Young step-down FWER procedure that R's multtest::mt.minP uses.
 
-R reference: phyloseq::mt(), multtest::mt.maxT, multtest::mt.minP
 """
 
 from __future__ import annotations

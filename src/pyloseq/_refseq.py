@@ -1,6 +1,5 @@
 """Reference sequence container (DNA sequences keyed by taxon ID).
 
-R reference: phyloseq::refseq(object)
 """
 
 from __future__ import annotations

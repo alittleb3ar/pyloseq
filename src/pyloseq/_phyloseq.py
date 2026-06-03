@@ -1,6 +1,5 @@
 """Core Phyloseq container
 
-R reference: phyloseq::phyloseq-class
 """
 
 from __future__ import annotations
