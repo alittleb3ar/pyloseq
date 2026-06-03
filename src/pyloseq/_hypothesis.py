@@ -4,7 +4,6 @@ Implements per-taxon tests for comparing two groups, with several
 multiple-testing correction options including the permutation-based
 Westfall-Young step-down FWER procedure that R's multtest::mt.minP uses.
 
-R reference: phyloseq::mt(), multtest::mt.maxT, multtest::mt.minP
 """
 
 from __future__ import annotations
@@ -15,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from pyloseq._exceptions import pyloseqValidationError
+from pyloseq._manipulation import _otu_taxa_rows
 
 if TYPE_CHECKING:
     from pyloseq._phyloseq import Phyloseq
@@ -30,6 +30,8 @@ def multi_tax_test(
     rng_seed: int | None = 42,
 ) -> pd.DataFrame:
     """Test each taxon for differential abundance between two groups.
+
+    R reference: phyloseq::mt()
 
     Parameters
     ----------
@@ -75,13 +77,9 @@ def multi_tax_test(
         If ``sample_data`` is missing, ``grouping_var`` is not found, the
         variable does not have exactly 2 distinct non-NaN levels, or either
         group has fewer than 2 samples.
-
-    R reference: phyloseq::mt()
     """
     if ps.sample_data is None:
         raise pyloseqValidationError("multi_tax_test requires sample_data")
-
-    from pyloseq._manipulation import _otu_taxa_rows  # noqa: PLC0415
 
     sam_df = ps.sample_data.to_frame()
     if grouping_var not in sam_df.columns:

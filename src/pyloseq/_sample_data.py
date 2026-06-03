@@ -1,9 +1,10 @@
 """Per-sample metadata container.
 
-R reference: phyloseq::sample_data(object)
 """
 
 from __future__ import annotations
+
+from typing import cast
 
 import pandas as pd
 

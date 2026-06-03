@@ -93,12 +93,12 @@ def test_qza_read_with_taxonomy(ps_with_tax_only: Phyloseq, tmp_path: Path) -> N
     assert ps2.ntaxa == ps_with_tax_only.ntaxa
 
 
-def test_qza_read_with_tree(ps_with_tree: Phyloseq, tmp_path: Path) -> None:
-    ft_qza = _make_feature_table_qza(tmp_path, ps_with_tree)
-    tree_qza = _make_tree_qza(tmp_path, ps_with_tree)
+def test_qza_read_with_tree(ps_tree_only: Phyloseq, tmp_path: Path) -> None:
+    ft_qza = _make_feature_table_qza(tmp_path, ps_tree_only)
+    tree_qza = _make_tree_qza(tmp_path, ps_tree_only)
     ps2 = pyloseq.read_qza(features=ft_qza, tree=tree_qza)
     assert ps2.phy_tree is not None
-    assert ps2.phy_tree.n_tips == ps_with_tree.ntaxa
+    assert ps2.phy_tree.n_tips == ps_tree_only.ntaxa
 
 
 def test_qza_provenance_stashed_in_metadata(

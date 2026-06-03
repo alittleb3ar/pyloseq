@@ -1,7 +1,5 @@
 """Beta diversity distances, UniFrac, and the distance dispatcher.
 
-R reference: phyloseq::distance(physeq, method, type, ...)
-             phyloseq::UniFrac(physeq, weighted, normalized, parallel, fast)
 """
 
 from __future__ import annotations
@@ -11,6 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+from scipy.spatial.distance import jensenshannon, pdist, squareform
+from skbio.diversity import beta_diversity
+from skbio.stats.distance import DistanceMatrix
+from skbio.stats.ordination import OrdinationResults
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
@@ -80,6 +82,8 @@ def distance(
 ) -> DistanceMatrix:
     """Compute a pairwise distance (or dissimilarity) matrix.
 
+    R reference: distance(physeq, method, type, ...)
+
     Parameters
     ----------
     ps:
@@ -98,8 +102,6 @@ def distance(
     Returns
     -------
     skbio.stats.distance.DistanceMatrix
-
-    R reference: distance(physeq, method, type, ...)
     """
     if "type" in kwargs:
         warnings.warn(
@@ -145,6 +147,8 @@ def unifrac(
 ) -> DistanceMatrix:
     """Compute (weighted or unweighted) UniFrac distances.
 
+    R reference: UniFrac(physeq, weighted, normalized, parallel, fast)
+
     Parameters
     ----------
     ps:
@@ -159,10 +163,7 @@ def unifrac(
     Returns
     -------
     skbio.stats.distance.DistanceMatrix
-
-    R reference: UniFrac(physeq, weighted, normalized, parallel, fast)
     """
-    from skbio.diversity import beta_diversity
 
     if ps.phy_tree is None:
         raise pyloseqValidationError("unifrac requires phy_tree")
@@ -237,8 +238,6 @@ def _scipy_distance(
 
 def _jsd_distance(ps: Phyloseq, kind: str = "samples") -> Any:
     """Pairwise Jensen-Shannon divergence."""
-    from scipy.spatial.distance import jensenshannon, pdist, squareform
-    from skbio.stats.distance import DistanceMatrix
 
     otu_df = _otu_samples_rows(ps)
     if kind == "taxa":
@@ -269,7 +268,6 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
     scikit-bio 0.6+ removed the standalone dpcoa() function, so we implement
     the double-centering + weighted projection algorithm directly.
     """
-    from skbio.stats.ordination import OrdinationResults
 
     species_ids = list(dm_species.ids)
     D = np.array(dm_species.data)
@@ -326,7 +324,6 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
 
     R reference: distance(physeq, "dpcoa")
     """
-    from skbio.stats.distance import DistanceMatrix
 
     if ps.phy_tree is None:
         raise pyloseqValidationError("dpcoa requires phy_tree")

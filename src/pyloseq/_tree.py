@@ -1,6 +1,5 @@
 """Phylogenetic tree container wrapping scikit-bio TreeNode.
 
-R reference: phyloseq::phy_tree(object)
 """
 
 from __future__ import annotations

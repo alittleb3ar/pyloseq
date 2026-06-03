@@ -80,3 +80,18 @@ def test_copy_is_independent() -> None:
     assert t._tree is not t2._tree  # Newick round-trip must produce a fresh TreeNode
     t2._tree = PhyTree.from_newick("(A:0.5);")._tree  # replace copy's internals
     assert t.n_tips == 3  # original unaffected
+
+
+def test_eq_different_branch_lengths() -> None:
+    """Same topology with different branch lengths must compare as not equal."""
+    t1 = PhyTree.from_newick("((A:0.1,B:0.2):0.3,C:0.4);")
+    t2 = PhyTree.from_newick("((A:0.9,B:0.2):0.3,C:0.4);")
+    assert t1 != t2
+
+
+def test_from_newick_file_round_trips_branch_lengths(tmp_path: Path) -> None:
+    nwk = "((OTU1:0.15,OTU2:0.25):0.05,OTU3:0.35);"
+    nwk_file = tmp_path / "tree.nwk"
+    nwk_file.write_text(nwk)
+    t = PhyTree.from_newick_file(nwk_file)
+    assert_allclose(t.total_branch_length, 0.15 + 0.25 + 0.05 + 0.35, atol=1e-12)

@@ -71,7 +71,7 @@ def test_strict_mode_raises_on_sample_mismatch() -> None:
 
 def test_missing_otu_table_raises() -> None:
     with pytest.raises(pyloseqValidationError):
-        Phyloseq(otu=None)  # type: ignore[arg-type]
+        Phyloseq(otu=None)
 
 
 def test_empty_taxa_intersection_raises() -> None:

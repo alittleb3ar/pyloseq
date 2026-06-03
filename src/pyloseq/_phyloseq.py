@@ -1,6 +1,5 @@
 """Core Phyloseq container
 
-R reference: phyloseq::phyloseq-class
 """
 
 from __future__ import annotations
@@ -271,6 +270,8 @@ class Phyloseq:
         ``skbio.stats.distance.DistanceMatrix`` usable directly with
         ``skbio.stats.distance.permanova`` / ``anosim``.
 
+        R reference: distance(physeq, method)
+
         Parameters
         ----------
         method:
@@ -278,7 +279,6 @@ class Phyloseq:
         **kwargs:
             Forwarded to the underlying implementation.
 
-        R reference: distance(physeq, method)
         """
 
         return _distance(self, method, **kwargs)
@@ -295,6 +295,8 @@ class Phyloseq:
         Thin wrapper around :func:`pyloseq.ordinate` — returns an
         ``skbio.stats.ordination.OrdinationResults``.
 
+        R reference: ordinate(physeq, method, distance, formula)
+
         Parameters
         ----------
         method:
@@ -306,7 +308,6 @@ class Phyloseq:
         **kwargs:
             Forwarded to the underlying implementation.
 
-        R reference: ordinate(physeq, method, distance, formula)
         """
         from pyloseq._ordination import ordinate as _ordinate
 
@@ -357,6 +358,8 @@ def _validate(
 ) -> None:
     """Run the full component-consistency validator suite.
 
+    R reference: validObject(phyloseq(...))
+
     Checks (in order):
     1. OtuTable is present
     2. Taxa-name intersection across otu_table, tax_table, and refseq is non-empty
@@ -364,7 +367,6 @@ def _validate(
     3. Sample-name intersection between OtuTable and SampleData is non-empty
     4. Prune all components to the intersection (or raise in strict mode)
 
-    R reference: validObject(phyloseq(...))
     """
     # Rule 1 — OtuTable required
     if ps._otu is None:

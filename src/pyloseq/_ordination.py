@@ -1,6 +1,5 @@
 """Ordination dispatcher mirroring R phyloseq::ordinate.
 
-R reference: phyloseq::ordinate(physeq, method, distance, formula, ...)
 """
 
 from __future__ import annotations
@@ -10,12 +9,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+from skbio.stats.distance import DistanceMatrix
+from skbio.stats.ordination import OrdinationResults, cca, rda
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
 
 if TYPE_CHECKING:
-    from skbio.stats.ordination import OrdinationResults
 
     from pyloseq._phyloseq import Phyloseq
 
@@ -24,6 +24,7 @@ _SUPPORTED_METHODS = {
     "MDS",  # aliases — PCoA via scikit-bio pcoa()
     "NMDS",  # Non-metric MDS via scikit-bio nmds()
     "CCA",  # Canonical Correspondence Analysis
+    "CA",
     "RDA",  # Redundancy Analysis
     "CAP",  # Constrained Analysis of Principal Coordinates
     "DPCoA",  # Double Principal Coordinates Analysis
@@ -41,6 +42,8 @@ def ordinate(
     **kwargs: Any,
 ) -> OrdinationResults:
     """Perform multivariate ordination on a Phyloseq object.
+
+    R reference: ordinate(physeq, method, distance, formula, ...)
 
     Parameters
     ----------
@@ -63,7 +66,6 @@ def ordinate(
     -------
     skbio.stats.ordination.OrdinationResults
 
-    R reference: ordinate(physeq, method, distance, formula, ...)
     """
     m = method.upper()
 
@@ -76,6 +78,8 @@ def ordinate(
         return _pcoa(ps, distance, **kwargs)
     if m == "NMDS":
         return _nmds(ps, distance, **kwargs)
+    if m == "CA":
+        return _ca(ps, **kwargs)
     if m == "CCA":
         return _cca(ps, formula, **kwargs)
     if m == "RDA":
@@ -100,7 +104,6 @@ def ordinate(
 
 def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
     """Compute or return a distance matrix."""
-    from skbio.stats.distance import DistanceMatrix
 
     if isinstance(distance, DistanceMatrix):
         return distance
@@ -150,8 +153,6 @@ def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
         return nmds(dm, **kwargs)
     except (ImportError, AttributeError):
         pass
-
-    from skbio.stats.ordination import OrdinationResults
 
     n_dims = kwargs.get("number_of_dimensions", 2)
     dist_sq = np.array(dm.data)  # already square — do NOT squareform
@@ -254,7 +255,6 @@ def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "CCA", formula=~Var)
     """
-    from skbio.stats.ordination import cca
 
     x_df = _parse_formula(ps, formula)
 
@@ -298,7 +298,6 @@ def _cap(
 
     R reference: ordinate(physeq, "CAP", distance, formula)
     """
-    from skbio.stats.ordination import rda
 
     dm = _resolve_dm(ps, distance)
     x_df = _parse_formula(ps, formula)
@@ -340,3 +339,93 @@ def _dpcoa_ordinate(ps: Phyloseq, **kwargs: Any) -> Any:
     freq_table = otu_df.div(row_sums, axis=0)
 
     return _dpcoa_manual(freq_table, dm_species)
+
+
+def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
+    """Correspondence Analysis.
+
+    Decomposes the table of standardized residuals (Pearson chi-square
+    components) via SVD. Returns sample and feature coordinates in the
+    space spanned by the principal axes.
+
+    R reference: ordinate(physeq, "CA")  (vegan::cca with no constraints)
+
+    Parameters
+    ----------
+    scaling:
+        1 = row/sample scaling (samples at centroids of taxa),
+        2 = column/taxa scaling. Matches vegan's ``scaling`` argument.
+
+    """
+
+    otu_df = _otu_samples_rows(ps)  # samples x taxa
+    N = otu_df.values.astype(float)
+
+    grand_total = N.sum()
+    if grand_total <= 0:
+        raise pyloseqValidationError("CA requires a non-empty count table")
+
+    # Relative frequencies and marginal masses
+    P = N / grand_total
+    row_mass = P.sum(axis=1)  # sample masses
+    col_mass = P.sum(axis=0)  # taxa masses
+
+    # Drop all-zero rows/cols, which would divide by zero below
+    keep_r = row_mass > 0
+    keep_c = col_mass > 0
+    if not keep_r.all() or not keep_c.all():
+        P = P[np.ix_(keep_r, keep_c)]
+        row_mass = row_mass[keep_r]
+        col_mass = col_mass[keep_c]
+
+    sample_ids = list(otu_df.index[keep_r])
+    taxa_ids = list(otu_df.columns[keep_c])
+
+    # Standardized residuals: S_ij = (P_ij - r_i c_j) / sqrt(r_i c_j)
+    expected = np.outer(row_mass, col_mass)
+    S = (P - expected) / np.sqrt(expected)
+
+    # SVD — singular values are sqrt(eigenvalues) = canonical correlations
+    U, sigma, Vt = np.linalg.svd(S, full_matrices=False)
+
+    # Number of meaningful axes = min(rows, cols) - 1
+    rank = min(len(sample_ids), len(taxa_ids)) - 1
+    rank = max(rank, 1)
+    U, sigma, Vt = U[:, :rank], sigma[:rank], Vt[:rank, :]
+
+    eigvals = sigma**2
+
+    for k in range(U.shape[1]):
+        j = np.argmax(np.abs(U[:, k]))
+        if U[j, k] < 0:
+            U[:, k] = -U[:, k]
+            Vt[k, :] = -Vt[k, :]
+
+    # Standard coordinates, then scale to principal coordinates.
+    # Row (sample) standard coords:  U / sqrt(r);  Col (taxa): V / sqrt(c)
+    row_std = U / np.sqrt(row_mass)[:, None]
+    col_std = Vt.T / np.sqrt(col_mass)[:, None]
+
+    if scaling == 1:
+        sample_coords = row_std * sigma  # samples in principal coords
+        feature_coords = col_std  # taxa in standard coords
+    elif scaling == 2:
+        sample_coords = row_std  # samples in standard coords
+        feature_coords = col_std * sigma  # taxa in principal coords
+    else:
+        raise pyloseqValidationError(f"scaling must be 1 or 2, got {scaling!r}")
+
+    axis_names = [f"CA{i + 1}" for i in range(rank)]
+    total_inertia = float(eigvals.sum())
+
+    return OrdinationResults(
+        short_method_name="CA",
+        long_method_name="Correspondence Analysis",
+        eigvals=pd.Series(eigvals, index=axis_names),
+        samples=pd.DataFrame(sample_coords, index=sample_ids, columns=axis_names),
+        features=pd.DataFrame(feature_coords, index=taxa_ids, columns=axis_names),
+        proportion_explained=pd.Series(
+            eigvals / total_inertia if total_inertia > 0 else np.zeros(rank),
+            index=axis_names,
+        ),
+    )

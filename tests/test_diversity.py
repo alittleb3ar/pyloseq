@@ -143,3 +143,26 @@ def test_se_ace_warns(ps: Phyloseq) -> None:
 def test_ace_is_not_all_nan(ps: Phyloseq) -> None:
     df = estimate_richness(ps, measures=["ACE"])
     assert not df["ACE"].isna().all()
+
+
+# ===========================================================================
+# split=False (pool all samples before computing)
+# ===========================================================================
+
+
+def test_estimate_richness_split_false_returns_single_row(ps: Phyloseq) -> None:
+    df = estimate_richness(ps, split=False)
+    assert len(df) == 1
+
+
+def test_estimate_richness_split_false_observed_ge_any_sample(ps: Phyloseq) -> None:
+    """Pooled Observed must be >= the max Observed across individual samples."""
+    per_sample = estimate_richness(ps, measures=["Observed"])
+    pooled = estimate_richness(ps, measures=["Observed"], split=False)
+    assert pooled["Observed"].iloc[0] >= per_sample["Observed"].max()
+
+
+def test_estimate_richness_split_false_subset_measures(ps: Phyloseq) -> None:
+    df = estimate_richness(ps, measures=["Shannon", "Simpson"], split=False)
+    assert list(df.columns) == ["Shannon", "Simpson"]
+    assert len(df) == 1

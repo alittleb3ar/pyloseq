@@ -1,7 +1,4 @@
-"""BIOM v1 (JSON) and v2 (HDF5) reader and writer.
-
-R reference: phyloseq::import_biom(BIOMfilename, ...)
-"""
+"""BIOM v1 (JSON) and v2 (HDF5) reader and writer."""
 
 from __future__ import annotations
 
@@ -64,6 +61,8 @@ def read_biom(
 ) -> Phyloseq:
     """Load a BIOM v1 (JSON) or v2 (HDF5) file into a ``Phyloseq`` object.
 
+    R reference: phyloseq::import_biom(BIOMfilename, parseFunction=parse_taxonomy)
+
     Parameters
     ----------
     path:
@@ -73,8 +72,6 @@ def read_biom(
         ``"default"`` splits on ``"; "`` or ``";"`` and assigns standard rank
         names.  ``"qiime"`` / ``"greengenes"`` additionally strips rank
         prefixes (``k__``, ``p__``, …).  Pass a callable for custom parsing.
-
-    R reference: phyloseq::import_biom(BIOMfilename, parseFunction=parse_taxonomy)
     """
 
     table: biom.Table = biom.load_table(str(path))
@@ -138,6 +135,8 @@ def write_biom(
 ) -> None:
     """Write a ``Phyloseq`` object to a BIOM file.
 
+    R reference: phyloseq::export_biom(x, file)
+
     Parameters
     ----------
     ps:
@@ -146,8 +145,6 @@ def write_biom(
         Output file path.
     version:
         ``"2.1"`` (default) writes HDF5; ``"1.0"`` writes JSON.
-
-    R reference: phyloseq::export_biom(x, file)
     """
 
     df = ps.otu_table.to_dataframe()
