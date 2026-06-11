@@ -1,8 +1,7 @@
-"""Tests for alpha diversity estimation (estimate_richness, se.ACE)."""
+"""Tests for alpha diversity estimation."""
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +35,6 @@ def test_estimate_richness_default_measures(ps: Phyloseq) -> None:
         "Chao1",
         "se.chao1",
         "ACE",
-        "se.ACE",
         "Shannon",
         "Simpson",
         "InvSimpson",
@@ -129,15 +127,13 @@ def test_estimate_richness_matches_r_globalpatterns() -> None:
 
 
 # ===========================================================================
-# se.ACE warns; ACE is not NaN
+# se.ACE is not a valid measure; ACE is not NaN
 # ===========================================================================
 
 
-def test_se_ace_warns(ps: Phyloseq) -> None:
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
+def test_se_ace_is_invalid_measure(ps: Phyloseq) -> None:
+    with pytest.raises(pyloseq.pyloseqValidationError, match="se.ACE"):
         estimate_richness(ps, measures=["se.ACE"])
-        assert any("se.ACE" in str(x.message) for x in w)
 
 
 def test_ace_is_not_all_nan(ps: Phyloseq) -> None:

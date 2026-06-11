@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any, cast
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 import plotnine as _pn
@@ -40,11 +41,6 @@ from plotnine import (
 )
 from plotnine import facet_grid as pg_facet_grid
 from scipy.spatial import ConvexHull, QhullError
-
-try:
-    import networkx as nx
-except ImportError:
-    nx = None
 
 from pyloseq._distances import distance as _distance
 from pyloseq._diversity import _ALL_MEASURES, estimate_richness
@@ -720,11 +716,6 @@ def make_network(
     networkx.Graph
 
     """
-    if nx is None:
-        raise ImportError(
-            "make_network requires networkx. Install it with: pip install networkx"
-        )
-
     if "type" in kwargs:
         warnings.warn(
             "The 'type' parameter is deprecated; use 'kind' instead.",
@@ -822,11 +813,6 @@ def plot_network(
     plotnine.ggplot
 
     """
-    if nx is None:
-        raise ImportError(
-            "plot_network requires networkx. Install it with: pip install networkx"
-        )
-
     layout_fn = getattr(nx, f"{layout}_layout", nx.spring_layout)
     pos = layout_fn(g)
 

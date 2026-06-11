@@ -67,6 +67,5 @@ Initial release of pyloseq — a native Python port of R/Bioconductor
 - **DCA ordination** (`method="DCA"`) is not implemented; a `NotImplementedError` with a helpful message is raised.
 - **`PhyTree.from_ape_rds()`** is not implemented; use scikit-bio or ete3 to load Newick/Nexus trees directly.
 - **`se.ACE`** (standard error of the ACE richness estimator) is not computed; the point estimate (`ACE`) is returned and a warning is issued.
-- Nine integration tests are skipped pending generation of R golden files for numerical equivalence validation. See [docs/golden_files.md](docs/golden_files.md) for instructions.
 
 [1.0.0]: https://github.com/alittleb3ar/pyloseq/releases/tag/v1.0.0

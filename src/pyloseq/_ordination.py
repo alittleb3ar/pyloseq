@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
 from skbio.stats.distance import DistanceMatrix
-from skbio.stats.ordination import OrdinationResults, cca, rda
+from skbio.stats.ordination import OrdinationResults, cca, pcoa, rda
+from sklearn.manifold import MDS
 
+from pyloseq._distances import _dpcoa_manual
+from pyloseq._distances import distance as _distance
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
 
@@ -106,8 +108,6 @@ def _resolve_dm(ps: Phyloseq, distance: str | Any) -> Any:
     if isinstance(distance, DistanceMatrix):
         return distance
     if isinstance(distance, str):
-        from pyloseq._distances import distance as _distance  # noqa: PLC0415
-
         return _distance(ps, distance)
     raise TypeError(
         f"distance must be a string or DistanceMatrix, got {type(distance)!r}"
@@ -119,8 +119,6 @@ def _pcoa(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "PCoA", distance)
     """
-    from skbio.stats.ordination import pcoa
-
     dm = _resolve_dm(ps, distance)
     result = pcoa(dm, **kwargs)
     return result
@@ -132,92 +130,37 @@ def _pcoa(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
 
 
 def _nmds(ps: Phyloseq, distance: str | Any, **kwargs: Any) -> Any:
-    """Non-metric multidimensional scaling.
-
-    Uses scikit-bio's ``nmds`` if available. If not, falls back to
-    scikit-learn's non-metric :class:`sklearn.manifold.MDS`. If scikit-learn is
-    also unavailable, falls back to *classical (metric)* MDS — which is **not**
-    non-metric scaling, so the result is labelled honestly as metric MDS and a
-    warning is emitted, rather than being mislabelled as NMDS.
+    """Non-metric multidimensional scaling via :class:`sklearn.manifold.MDS`.
 
     R reference: ordinate(physeq, "NMDS", distance)
     """
     dm = _resolve_dm(ps, distance)
 
-    # Try scikit-bio nmds first
-    try:
-        from skbio.stats.ordination import nmds
-
-        return nmds(dm, **kwargs)
-    except (ImportError, AttributeError):
-        pass
-
     n_dims = kwargs.get("number_of_dimensions", 2)
-    dist_sq = np.array(dm.data)  # already square — do NOT squareform
+    dist_sq = np.array(dm.data)
     sample_ids = list(dm.ids)
 
-    # Fall back: scikit-learn non-metric MDS with a precomputed distance matrix
-    try:
-        from sklearn.manifold import MDS
-
-        mds = MDS(
-            n_components=n_dims,
-            dissimilarity="precomputed",
-            random_state=kwargs.get("random_state", 42),
-            metric=False,
-            n_init=1,
-        )
-        coords = mds.fit_transform(dist_sq)
-        stress = float(mds.stress_)
-
-        col_names = [f"NMDS{i + 1}" for i in range(n_dims)]
-        samples_df = pd.DataFrame(coords, index=sample_ids, columns=col_names)
-        result = OrdinationResults(
-            short_method_name="NMDS",
-            long_method_name="Nonmetric Multidimensional Scaling",
-            # NMDS has no eigenvalues; expose Kruskal stress instead so the
-            # caller can assess fit quality (lower is better).
-            eigvals=pd.Series([np.nan] * n_dims, index=col_names),
-            samples=samples_df,
-            proportion_explained=pd.Series([np.nan] * n_dims, index=col_names),
-        )
-        # Attach stress as an attribute (OrdinationResults has no native slot).
-        result.stress = stress
-        return result
-    except ImportError:
-        pass
-
-    # Last resort: classical (metric) MDS via double-centering. This is the
-    # PCoA solution, NOT non-metric scaling — label it accordingly and warn so
-    # the output is never silently presented as NMDS.
-    warnings.warn(
-        "Neither scikit-bio nmds nor scikit-learn is available; falling back to "
-        "classical (metric) MDS. The result is metric MDS (equivalent to PCoA), "
-        "not non-metric NMDS. Install scikit-learn for true NMDS.",
-        UserWarning,
-        stacklevel=2,
+    mds = MDS(
+        n_components=n_dims,
+        dissimilarity="precomputed",
+        random_state=kwargs.get("random_state", 42),
+        metric=False,
+        n_init=1,
     )
-    H = np.eye(len(dist_sq)) - np.ones_like(dist_sq) / len(dist_sq)
-    B = -0.5 * H @ (dist_sq**2) @ H
-    vals, vecs = np.linalg.eigh(B)
-    idx = np.argsort(-vals)
-    vals, vecs = vals[idx], vecs[:, idx]
-    vals_pos = np.maximum(vals[:n_dims], 0)
-    coords = vecs[:, :n_dims] * np.sqrt(vals_pos)
+    coords = mds.fit_transform(dist_sq)
+    stress = float(mds.stress_)
 
-    col_names = [f"MDS{i + 1}" for i in range(n_dims)]
+    col_names = [f"NMDS{i + 1}" for i in range(n_dims)]
     samples_df = pd.DataFrame(coords, index=sample_ids, columns=col_names)
-    total = float(np.maximum(vals, 0).sum())
-    return OrdinationResults(
-        short_method_name="MDS",
-        long_method_name="Classical (metric) Multidimensional Scaling",
-        eigvals=pd.Series(vals_pos, index=col_names),
+    result = OrdinationResults(
+        short_method_name="NMDS",
+        long_method_name="Nonmetric Multidimensional Scaling",
+        eigvals=pd.Series([np.nan] * n_dims, index=col_names),
         samples=samples_df,
-        proportion_explained=pd.Series(
-            (vals_pos / total) if total > 0 else np.zeros(n_dims),
-            index=col_names,
-        ),
+        proportion_explained=pd.Series([np.nan] * n_dims, index=col_names),
     )
+    result.stress = stress
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -268,8 +211,6 @@ def _rda(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "RDA", formula=~Var)
     """
-    from skbio.stats.ordination import rda
-
     x_df = _parse_formula(ps, formula)
 
     otu_df = _otu_samples_rows(ps)
@@ -319,8 +260,6 @@ def _dpcoa_ordinate(ps: Phyloseq, **kwargs: Any) -> Any:
 
     R reference: ordinate(physeq, "DPCoA")
     """
-    from pyloseq._distances import _dpcoa_manual  # noqa: PLC0415
-
     if ps.phy_tree is None:
         raise pyloseqValidationError("DPCoA ordination requires phy_tree")
 

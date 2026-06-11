@@ -23,7 +23,6 @@ _ALL_MEASURES = [
     "Chao1",
     "se.chao1",
     "ACE",
-    "se.ACE",
     "Shannon",
     "Simpson",
     "InvSimpson",

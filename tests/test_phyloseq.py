@@ -8,14 +8,7 @@ import pandas as pd
 import pytest
 
 import pyloseq
-from pyloseq import (
-    OtuTable,
-    Phyloseq,
-    PhyTree,
-    SampleData,
-    TaxTable,
-    pyloseqValidationError,
-)
+from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable, pyloseqValidationError
 from pyloseq.datasets import load_esophagus_reference, load_global_patterns_reference
 
 # ===========================================================================
