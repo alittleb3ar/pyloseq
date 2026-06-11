@@ -9,16 +9,8 @@ import pandas as pd
 import pytest
 
 import pyloseq
-from pyloseq import (
-    OtuTable,
-    Phyloseq,
-    SampleData,
-    TaxTable,
-    prune_samples,
-    prune_taxa,
-    subset_samples,
-    subset_taxa,
-)
+from pyloseq import (OtuTable, Phyloseq, SampleData, TaxTable, prune_samples,
+                     prune_taxa, subset_samples, subset_taxa)
 from pyloseq.datasets.fixtures import load_global_patterns_reference
 
 GOLDEN_DIR = Path("tests/golden")

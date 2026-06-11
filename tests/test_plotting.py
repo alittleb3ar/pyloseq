@@ -16,17 +16,10 @@ from skbio.stats.ordination import OrdinationResults
 from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._ordination import ordinate
-from pyloseq.plotting import (
-    _convex_hull_df,
-    _rescale_biplot_scores,
-    make_network,
-    plot_bar,
-    plot_heatmap,
-    plot_network,
-    plot_ordination,
-    plot_richness,
-    plot_tree,
-)
+from pyloseq.plotting import (_convex_hull_df, _rescale_biplot_scores,
+                              make_network, plot_bar, plot_heatmap,
+                              plot_network, plot_ordination, plot_richness,
+                              plot_tree)
 
 # ---------------------------------------------------------------------------
 # Fixtures
