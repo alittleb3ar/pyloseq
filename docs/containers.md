@@ -2,19 +2,6 @@
 
 pyloseq has no dedicated Docker image - it doesn't need one. Because it's a pure Python package with standard PyPI dependencies, it installs with a single `pip install` on top of any Python-based base image.
 
-## Quickstart one-liner
-
-```bash
-docker run --rm python:3.12-slim sh -c "pip install -q pyloseq && python -c \"
-import pyloseq
-from pyloseq import Phyloseq, OtuTable, SampleData, TaxTable
-from pyloseq.datasets import load_global_patterns_reference
-ref = load_global_patterns_reference()
-ps = Phyloseq(otu=OtuTable(ref['otu_table'], taxa_are_rows=True), sam=SampleData(ref['sample_data']))
-print(ps)
-\""
-```
-
 ## Minimal Dockerfile
 
 ```dockerfile
