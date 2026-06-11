@@ -14,6 +14,16 @@ pip install pyloseq
 
 Requires Python 3.10+.
 
+## Using in containers
+
+pyloseq installs with `pip` on any standard Python base image:
+
+```bash
+docker run --rm python:3.12-slim sh -c "pip install pyloseq && python -c 'import pyloseq; print(pyloseq.__version__)'"
+```
+
+Tested base images: `python:3.10-slim`, `python:3.11-slim`, `python:3.12-slim`, `python:3.13-slim`, `continuumio/miniconda3`, `jupyter/scipy-notebook`. See [docs/containers.md](docs/containers.md) for a minimal Dockerfile, conda setup, and more.
+
 ## Quick start
 
 ```python

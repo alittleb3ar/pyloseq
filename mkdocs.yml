@@ -66,5 +66,6 @@ nav:
     - Datasets: api/datasets.md
   - Examples:
     - McMurdie & Holmes (2013): notebooks/mcmurdie_holmes_2013.ipynb
+  - Containers: containers.md
   - Developer:
     - Golden Files: golden_files.md
