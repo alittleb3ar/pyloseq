@@ -12,9 +12,19 @@ import skbio
 import skbio.tree
 
 import pyloseq
-from pyloseq import (OtuTable, Phyloseq, PhyTree, RefSeq, SampleData, TaxTable,
-                     filter_taxa, kOverA, rarefy_even_depth, taxa_filter_mask,
-                     transform_sample_counts)
+from pyloseq import (
+    OtuTable,
+    Phyloseq,
+    PhyTree,
+    RefSeq,
+    SampleData,
+    TaxTable,
+    filter_taxa,
+    kOverA,
+    rarefy_even_depth,
+    taxa_filter_mask,
+    transform_sample_counts,
+)
 from pyloseq.datasets.fixtures import load_enterotype_reference
 
 GOLDEN_DIR = Path("tests/golden")

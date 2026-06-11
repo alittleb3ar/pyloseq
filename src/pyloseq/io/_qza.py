@@ -22,8 +22,7 @@ from pyloseq._refseq import RefSeq
 from pyloseq._sample_data import SampleData
 from pyloseq._tax_table import TaxTable
 from pyloseq._tree import PhyTree
-from pyloseq.io._biom import (_DEFAULT_RANKS, _parse_taxonomy_entry, read_biom,
-                              write_biom)
+from pyloseq.io._biom import _DEFAULT_RANKS, _parse_taxonomy_entry, read_biom, write_biom
 
 # Semantic types we recognise
 _FEATURE_TABLE_TYPES = {
