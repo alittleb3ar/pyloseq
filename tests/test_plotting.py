@@ -8,12 +8,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 import pytest
+from plotnine import ggplot
+from plotnine.scales.scale_xy import scale_x_discrete as ScaleXDiscrete
 from skbio.stats.ordination import OrdinationResults
 
 from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
+from pyloseq._diversity import _ALL_MEASURES
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._ordination import ordinate
 from pyloseq.plotting import (
@@ -94,8 +98,6 @@ def ca_ord(ps_plot: Phyloseq) -> OrdinationResults:
 
 class TestPlotBar:
     def test_returns_ggplot(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot)
         assert isinstance(p, ggplot)
 
@@ -109,32 +111,22 @@ class TestPlotBar:
         assert len(p.data) == ps_plot.ntaxa * ps_plot.nsamples
 
     def test_with_fill(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot, fill="Phylum")
         assert isinstance(p, ggplot)
 
     def test_with_facet_grid(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot, facet_grid="~ Group")
         assert isinstance(p, ggplot)
 
     def test_with_title(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot, title="My Bars")
         assert isinstance(p, ggplot)
 
     def test_custom_x_axis(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot, x="Group")
         assert isinstance(p, ggplot)
 
     def test_fill_column_absent_does_not_crash(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_bar(ps_plot, fill="NonexistentColumn")
         assert isinstance(p, ggplot)
 
@@ -146,8 +138,6 @@ class TestPlotBar:
 
 class TestPlotRichness:
     def test_returns_ggplot(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_richness(ps_plot)
         assert isinstance(p, ggplot)
 
@@ -161,8 +151,6 @@ class TestPlotRichness:
         assert set(p.data["Measure"].unique()) == {"Shannon", "Simpson"}
 
     def test_with_x_and_color(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_richness(ps_plot, x="Group", color="Group")
         assert isinstance(p, ggplot)
 
@@ -172,14 +160,10 @@ class TestPlotRichness:
         assert "SE" in p.data.columns
 
     def test_with_title(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_richness(ps_plot, title="Alpha Diversity")
         assert isinstance(p, ggplot)
 
     def test_all_measures_are_valid_names(self, ps_plot: Phyloseq) -> None:
-        from pyloseq._diversity import _ALL_MEASURES
-
         p = plot_richness(ps_plot)
         measures_in_data = set(p.data["Measure"].unique())
         assert measures_in_data.issubset(set(_ALL_MEASURES))
@@ -194,8 +178,6 @@ class TestPlotOrdinationSamples:
     def test_returns_ggplot(
         self, ps_plot: Phyloseq, pcoa_ord: OrdinationResults
     ) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, pcoa_ord), ggplot)
 
     def test_just_df_returns_dataframe(
@@ -220,21 +202,15 @@ class TestPlotOrdinationSamples:
     def test_color_mapping(
         self, ps_plot: Phyloseq, pcoa_ord: OrdinationResults
     ) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, pcoa_ord, color="Group"), ggplot)
 
     def test_show_hull(self, ps_plot: Phyloseq, pcoa_ord: OrdinationResults) -> None:
-        from plotnine import ggplot
-
         p = plot_ordination(ps_plot, pcoa_ord, color="Group", show_hull=True)
         assert isinstance(p, ggplot)
 
     def test_deprecated_type_param(
         self, ps_plot: Phyloseq, pcoa_ord: OrdinationResults
     ) -> None:
-        from plotnine import ggplot
-
         with pytest.warns(DeprecationWarning):
             p = plot_ordination(ps_plot, pcoa_ord, type="samples")
         assert isinstance(p, ggplot)
@@ -249,8 +225,6 @@ class TestPlotOrdinationScree:
     def test_returns_ggplot(
         self, ps_plot: Phyloseq, pcoa_ord: OrdinationResults
     ) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, pcoa_ord, kind="scree"), ggplot)
 
     def test_just_df_has_axis_and_variance(
@@ -280,8 +254,6 @@ class TestPlotOrdinationScree:
 
 class TestPlotOrdinationTaxa:
     def test_returns_ggplot(self, ps_plot: Phyloseq, ca_ord: OrdinationResults) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, ca_ord, kind="taxa"), ggplot)
 
     def test_just_df_has_axes(
@@ -316,8 +288,6 @@ class TestPlotOrdinationTaxa:
 
 class TestPlotOrdinationBiplot:
     def test_returns_ggplot(self, ps_plot: Phyloseq, ca_ord: OrdinationResults) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, ca_ord, kind="biplot"), ggplot)
 
     def test_just_df_has_type_column(
@@ -341,8 +311,6 @@ class TestPlotOrdinationBiplot:
 
 class TestPlotOrdinationSplit:
     def test_returns_ggplot(self, ps_plot: Phyloseq, ca_ord: OrdinationResults) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_ordination(ps_plot, ca_ord, kind="split"), ggplot)
 
     def test_just_df_has_panel_column(
@@ -379,8 +347,6 @@ class TestPlotOrdinationErrors:
 
 class TestPlotHeatmap:
     def test_returns_ggplot(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_heatmap(ps_plot, method="PCoA")
         assert isinstance(p, ggplot)
 
@@ -389,8 +355,6 @@ class TestPlotHeatmap:
         assert {"Sample", "OTU", "Abundance"}.issubset(p.data.columns)
 
     def test_no_transform(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_heatmap(ps_plot, method="PCoA", trans=None)
         assert isinstance(p, ggplot)
 
@@ -406,14 +370,41 @@ class TestPlotHeatmap:
             plot_heatmap(ps_plot, method="PCoA", trans="sqrt")
 
     def test_with_title(self, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_heatmap(ps_plot, method="PCoA", title="Heatmap")
         assert isinstance(p, ggplot)
 
     def test_row_count(self, ps_plot: Phyloseq) -> None:
         p = plot_heatmap(ps_plot, method="PCoA")
         assert len(p.data) == ps_plot.ntaxa * ps_plot.nsamples
+
+    def test_method_none_returns_ggplot(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None)
+        assert isinstance(p, ggplot)
+
+    def test_method_none_preserves_sample_order(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None)
+        cats = list(p.data["Sample"].cat.categories)
+        assert cats == list(ps_plot.sample_names)
+
+    def test_method_none_preserves_taxa_order(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None)
+        cats = list(p.data["OTU"].cat.categories)
+        assert cats == list(ps_plot.taxa_names)
+
+    def test_label_adds_scale(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None, label="Group")
+        assert isinstance(p, ggplot)
+        assert any(isinstance(s, ScaleXDiscrete) for s in p.scales)
+
+    def test_label_maps_sample_names_to_variable(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None, label="Group")
+        scale = next(s for s in p.scales if isinstance(s, ScaleXDiscrete))
+        # labels dict maps each sample name to its Group value
+        assert set(scale.labels.values()) == {"A", "B"}
+
+    def test_label_missing_warns(self, ps_plot: Phyloseq) -> None:
+        with pytest.warns(UserWarning, match="not found in sample_data"):
+            plot_heatmap(ps_plot, method=None, label="NoSuchColumn")
 
 
 # ---------------------------------------------------------------------------
@@ -423,40 +414,26 @@ class TestPlotHeatmap:
 
 class TestPlotTree:
     def test_treeonly_returns_ggplot(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, method="treeonly"), ggplot)
 
     def test_sampledodge_returns_ggplot(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(
             plot_tree(ps_with_tree_and_meta, method="sampledodge"), ggplot
         )
 
     def test_with_color(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, color="Group"), ggplot)
 
     def test_with_label_tips(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, label_tips="Phylum"), ggplot)
 
     def test_ladderize_right(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, ladderize=True), ggplot)
 
     def test_ladderize_left(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, ladderize="left"), ggplot)
 
     def test_left_justify(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_tree(ps_with_tree_and_meta, justify="left"), ggplot)
 
     def test_no_tree_raises(self, ps_plot: Phyloseq) -> None:
@@ -485,8 +462,6 @@ class TestPlotTree:
             plot_tree(ps, label_tips="Genus")
 
     def test_with_title(self, ps_with_tree_and_meta: Phyloseq) -> None:
-        from plotnine import ggplot
-
         p = plot_tree(ps_with_tree_and_meta, title="My Tree")
         assert isinstance(p, ggplot)
 
@@ -500,8 +475,6 @@ networkx = pytest.importorskip("networkx", reason="networkx not installed")
 
 class TestMakeNetwork:
     def test_returns_graph(self, ps_plot: Phyloseq) -> None:
-        import networkx as nx
-
         g = make_network(ps_plot, max_dist=0.99)
         assert isinstance(g, nx.Graph)
 
@@ -536,8 +509,6 @@ class TestMakeNetwork:
             assert 0.0 <= data["weight"] <= 1.0
 
     def test_taxa_kind(self, ps_plot: Phyloseq) -> None:
-        import networkx as nx
-
         g = make_network(ps_plot, kind="taxa", max_dist=1.0)
         assert isinstance(g, nx.Graph)
         assert set(g.nodes) <= set(ps_plot.taxa_names)
@@ -548,8 +519,6 @@ class TestMakeNetwork:
             assert "Phylum" in g.nodes[node]
 
     def test_deprecated_type_param(self, ps_plot: Phyloseq) -> None:
-        import networkx as nx
-
         with pytest.warns(DeprecationWarning):
             g = make_network(ps_plot, type="samples", max_dist=1.0)
         assert isinstance(g, nx.Graph)
@@ -566,23 +535,15 @@ class TestPlotNetwork:
         return make_network(ps_plot, max_dist=1.0, keep_isolates=True)
 
     def test_returns_ggplot(self, simple_graph: Any, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_network(simple_graph, ps_plot), ggplot)
 
     def test_with_color(self, simple_graph: Any, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_network(simple_graph, ps_plot, color="Group"), ggplot)
 
     def test_with_label(self, simple_graph: Any, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_network(simple_graph, ps_plot, label="node"), ggplot)
 
     def test_with_title(self, simple_graph: Any, ps_plot: Phyloseq) -> None:
-        from plotnine import ggplot
-
         assert isinstance(plot_network(simple_graph, ps_plot, title="Network"), ggplot)
 
 
