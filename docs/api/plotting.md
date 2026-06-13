@@ -106,22 +106,32 @@ df = plot_ordination(ps, ord_result, just_df=True)
 
 ## plot_heatmap
 
-Heatmap of OTU abundances across samples. Rows and columns are reordered by an ordination to group similar taxa and samples together:
+Heatmap of OTU abundances across samples. By default, rows and columns are reordered by an ordination to group similar taxa and samples together:
 
 ```python
 p = plot_heatmap(ps, method="PCoA", distance="bray", trans="log4")
 p.draw()
 ```
 
-The `trans` parameter applies a transformation before plotting:
+Pass `method=None` to skip ordination entirely and preserve the original sample and taxa order from the `Phyloseq` object:
+
+```python
+p = plot_heatmap(ps, method=None)
+```
+
+The `trans` parameter applies a transformation before plotting. Zero values become `NaN` and render using `na_value` rather than the low-end gradient colour:
 
 | `trans` | Transformation |
 |---|---|
 | `None` | Raw values |
-| `"log2"` | log₂(x + 1) |
-| `"log4"` | log₄(x + 1) |
+| `"log4"` | log₄(x), zeros → `na_value` |
 
-Providing custom axis labels via `taxa_label` and `sample_label` sets which column in the tax table / sample data is used as tick labels.
+Use `label` to replace x-axis sample-name tick labels with a `sample_data` variable. Sample ordering (from ordination or original order) is unaffected — only the tick text changes:
+
+```python
+# Label x-axis ticks by treatment group instead of sample ID
+p = plot_heatmap(ps, method="PCoA", label="TreatmentGroup")
+```
 
 ::: pyloseq.plot_heatmap
 
