@@ -415,6 +415,42 @@ class TestPlotHeatmap:
         p = plot_heatmap(ps_plot, method="PCoA")
         assert len(p.data) == ps_plot.ntaxa * ps_plot.nsamples
 
+    def test_method_none_returns_ggplot(self, ps_plot: Phyloseq) -> None:
+        from plotnine import ggplot
+
+        p = plot_heatmap(ps_plot, method=None)
+        assert isinstance(p, ggplot)
+
+    def test_method_none_preserves_sample_order(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None)
+        cats = list(p.data["Sample"].cat.categories)
+        assert cats == list(ps_plot.sample_names)
+
+    def test_method_none_preserves_taxa_order(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None)
+        cats = list(p.data["OTU"].cat.categories)
+        assert cats == list(ps_plot.taxa_names)
+
+    def test_label_adds_scale(self, ps_plot: Phyloseq) -> None:
+        from plotnine import ggplot
+        from plotnine.scales.scale_xy import scale_x_discrete as ScaleXDiscrete
+
+        p = plot_heatmap(ps_plot, method=None, label="Group")
+        assert isinstance(p, ggplot)
+        assert any(isinstance(s, ScaleXDiscrete) for s in p.scales)
+
+    def test_label_maps_sample_names_to_variable(self, ps_plot: Phyloseq) -> None:
+        from plotnine.scales.scale_xy import scale_x_discrete as ScaleXDiscrete
+
+        p = plot_heatmap(ps_plot, method=None, label="Group")
+        scale = next(s for s in p.scales if isinstance(s, ScaleXDiscrete))
+        # labels dict maps each sample name to its Group value
+        assert set(scale.labels.values()) == {"A", "B"}
+
+    def test_label_missing_warns(self, ps_plot: Phyloseq) -> None:
+        with pytest.warns(UserWarning, match="not found in sample_data"):
+            plot_heatmap(ps_plot, method=None, label="NoSuchColumn")
+
 
 # ---------------------------------------------------------------------------
 # plot_tree
