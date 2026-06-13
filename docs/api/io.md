@@ -195,3 +195,30 @@ to_csv(
 ```
 
 ::: pyloseq.to_csv
+
+---
+
+## DESeq2
+
+`Phyloseq.to_deseq2()` exports the count matrix and sample metadata in the format expected by [pydeseq2](https://pydeseq2.readthedocs.io/). It returns a `(counts, metadata)` tuple — both plain `pd.DataFrame` objects — ready to pass directly to `DeseqDataSet`. pydeseq2 is **not** a pyloseq dependency; install it separately with `pip install pydeseq2`.
+
+```python
+# pip install pydeseq2
+from pydeseq2.dds import DeseqDataSet
+from pydeseq2.ds import DeseqStats
+
+counts, metadata = ps.to_deseq2()
+
+dds = DeseqDataSet(counts=counts, metadata=metadata, design="~condition")
+dds.deseq2()
+
+ds = DeseqStats(dds, contrast=["condition", "treated", "control"])
+ds.summary()
+results = ds.results_df
+```
+
+`counts` has shape `(n_samples, n_taxa)` with samples as rows. Pass raw, un-normalized integer counts — DESeq2 performs its own size-factor normalization internally. A `UserWarning` is emitted if non-integer values are detected.
+
+`to_deseq2()` raises `ValueError` if `sample_data` is not attached.
+
+::: pyloseq.Phyloseq.to_deseq2
