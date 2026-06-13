@@ -313,6 +313,40 @@ class Phyloseq:
             self, method=method, distance=distance, formula=formula, **kwargs
         )
 
+    def to_deseq2(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Return count matrix and sample metadata formatted for pydeseq2.
+
+        Returns a ``(counts, metadata)`` tuple ready to pass directly to
+        ``DeseqDataSet(counts=counts, metadata=metadata, design=...)``.
+
+        ``counts`` has shape ``(n_samples, n_taxa)`` with samples as rows.
+        ``metadata`` has shape ``(n_samples, n_variables)`` with a matching index.
+
+        Raises
+        ------
+        ValueError
+            If this object has no ``sample_data``.
+        """
+        if self._sam is None:
+            raise ValueError(
+                "sample_data is required for DESeq2 export. "
+                "Attach a SampleData object before calling to_deseq2()."
+            )
+
+        counts = self._otu.to_dataframe()
+        if self._otu.taxa_are_rows:
+            counts = counts.T
+
+        if not (counts % 1 == 0).all().all():
+            warnings.warn(
+                "Count matrix contains non-integer values. "
+                "DESeq2 requires raw (un-normalized) integer read counts.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        return counts, self._sam.to_frame()
+
 
 def _emit_prune_warning(n_drop: int, unit: str, context: str) -> None:
     """Emit a consistent, context-aware pruning warning."""
