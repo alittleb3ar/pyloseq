@@ -34,6 +34,7 @@ from plotnine import (
     scale_fill_gradient,
     scale_size_continuous,
     scale_x_continuous,
+    scale_x_discrete,
     theme,
     theme_minimal,
     xlab,
@@ -587,13 +588,14 @@ def _plot_split(
 
 def plot_heatmap(
     ps: Phyloseq,
-    method: str = "NMDS",
+    method: str | None = "NMDS",
     distance: str = "bray",
     trans: str | None = "log4",
     low: str = "#000033",
     high: str = "#66CCFF",
     na_value: str = "black",
     title: str | None = None,
+    label: str | None = None,
 ) -> Any:
     """Abundance heatmap with samples *and* taxa reordered by ordination.
 
@@ -602,14 +604,15 @@ def plot_heatmap(
     to ``na_value`` rather than the gradient's low colour.
 
     R reference: plot_heatmap(physeq, method, distance, trans, low, high,
-                              na.value, title)
+                              na.value, title, label)
 
     Parameters
     ----------
     ps:
         ``Phyloseq`` object.
     method:
-        Ordination method used to reorder samples and taxa.
+        Ordination method used to reorder samples and taxa.  Pass ``None``
+        to skip ordination and preserve the original sample/taxa order.
     distance:
         Distance metric for ordination.
     trans:
@@ -622,6 +625,11 @@ def plot_heatmap(
         Colour for zero/NA cells.
     title:
         Plot title.
+    label:
+        Column in ``sample_data`` whose values label the x-axis ticks
+        instead of sample names.  Samples are still ordered by ordination
+        (or original order when ``method=None``); only the tick text
+        changes.  A warning is emitted if the column is not found.
 
     Returns
     -------
@@ -631,19 +639,20 @@ def plot_heatmap(
     # Ordinate to get sample AND taxa ordering.
     sample_order: list[str] = list(ps.sample_names)
     taxa_order: list[str] = list(ps.taxa_names)
-    try:
-        ord_result = ordinate(ps, method=method, distance=distance)
-        first_axis = ord_result.samples.columns[0]
-        sample_order = list(ord_result.samples.sort_values(first_axis).index)
-        # Reorder taxa by their ordination scores when available.
-        if getattr(ord_result, "features", None) is not None:
-            feat_first = ord_result.features.columns[0]
-            taxa_order = list(ord_result.features.sort_values(feat_first).index)
-    except (ValueError, RuntimeError, KeyError, pyloseqValidationError) as e:
-        warnings.warn(
-            f"Ordination failed ({e!r}); using original sample/taxa order.",
-            stacklevel=2,
-        )
+    if method is not None:
+        try:
+            ord_result = ordinate(ps, method=method, distance=distance)
+            first_axis = ord_result.samples.columns[0]
+            sample_order = list(ord_result.samples.sort_values(first_axis).index)
+            # Reorder taxa by their ordination scores when available.
+            if getattr(ord_result, "features", None) is not None:
+                feat_first = ord_result.features.columns[0]
+                taxa_order = list(ord_result.features.sort_values(feat_first).index)
+        except (ValueError, RuntimeError, KeyError, pyloseqValidationError) as e:
+            warnings.warn(
+                f"Ordination failed ({e!r}); using original sample/taxa order.",
+                stacklevel=2,
+            )
 
     long_df = psmelt(ps)
 
@@ -669,6 +678,22 @@ def plot_heatmap(
         + scale_fill_gradient(low=low, high=high, na_value=na_value)
         + theme(axis_text_x=element_text(rotation=90, hjust=1))
     )
+
+    if label is not None:
+        if ps.sample_data is None or label not in long_df.columns:
+            warnings.warn(
+                f"label '{label}' not found in sample_data; using sample names.",
+                stacklevel=2,
+            )
+        else:
+            labels_dict = (
+                long_df[["Sample", label]]
+                .drop_duplicates()
+                .set_index("Sample")[label]
+                .astype(str)
+                .to_dict()
+            )
+            p = p + scale_x_discrete(labels=labels_dict)
 
     if title:
         p = p + labs(title=title)
