@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from plotnine import ggplot
 from plotnine.scales.scale_xy import scale_x_discrete as ScaleXDiscrete
+from plotnine.scales.scale_xy import scale_y_discrete as ScaleYDiscrete
 from skbio.stats.ordination import OrdinationResults
 
 from pyloseq import OtuTable, Phyloseq, PhyTree, SampleData, TaxTable
@@ -405,6 +406,21 @@ class TestPlotHeatmap:
     def test_label_missing_warns(self, ps_plot: Phyloseq) -> None:
         with pytest.warns(UserWarning, match="not found in sample_data"):
             plot_heatmap(ps_plot, method=None, label="NoSuchColumn")
+
+    def test_taxa_label_adds_scale(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None, taxa_label="Phylum")
+        assert isinstance(p, ggplot)
+        assert any(isinstance(s, ScaleYDiscrete) for s in p.scales)
+
+    def test_taxa_label_maps_taxa_names_to_rank(self, ps_plot: Phyloseq) -> None:
+        p = plot_heatmap(ps_plot, method=None, taxa_label="Phylum")
+        scale = next(s for s in p.scales if isinstance(s, ScaleYDiscrete))
+        # labels dict maps each OTU name to its Phylum value
+        assert set(scale.labels.values()) == {f"P{i}" for i in range(6)}
+
+    def test_taxa_label_missing_warns(self, ps_plot: Phyloseq) -> None:
+        with pytest.warns(UserWarning, match="not found in tax_table"):
+            plot_heatmap(ps_plot, method=None, taxa_label="NoSuchRank")
 
 
 # ---------------------------------------------------------------------------

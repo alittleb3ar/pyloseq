@@ -126,11 +126,11 @@ The `trans` parameter applies a transformation before plotting. Zero values beco
 | `None` | Raw values |
 | `"log4"` | log₄(x), zeros → `na_value` |
 
-Use `label` to replace x-axis sample-name tick labels with a `sample_data` variable. Sample ordering (from ordination or original order) is unaffected — only the tick text changes:
+Use `label` to replace x-axis sample-name tick labels with a `sample_data` variable, and `taxa_label` to replace y-axis taxa-name tick labels with a taxonomic rank. Ordering (from ordination or original order) is unaffected — only the tick text changes. These mirror R phyloseq's `sample.label` and `taxa.label`:
 
 ```python
-# Label x-axis ticks by treatment group instead of sample ID
-p = plot_heatmap(ps, method="PCoA", label="TreatmentGroup")
+# Label x-axis ticks by treatment group, y-axis ticks by phylum
+p = plot_heatmap(ps, method="PCoA", label="TreatmentGroup", taxa_label="Phylum")
 ```
 
 ::: pyloseq.plot_heatmap

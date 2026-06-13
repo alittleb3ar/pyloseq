@@ -35,6 +35,7 @@ from plotnine import (
     scale_size_continuous,
     scale_x_continuous,
     scale_x_discrete,
+    scale_y_discrete,
     theme,
     theme_minimal,
     xlab,
@@ -596,6 +597,7 @@ def plot_heatmap(
     na_value: str = "black",
     title: str | None = None,
     label: str | None = None,
+    taxa_label: str | None = None,
 ) -> Any:
     """Abundance heatmap with samples *and* taxa reordered by ordination.
 
@@ -604,7 +606,7 @@ def plot_heatmap(
     to ``na_value`` rather than the gradient's low colour.
 
     R reference: plot_heatmap(physeq, method, distance, trans, low, high,
-                              na.value, title, label)
+                              na.value, title, sample.label, taxa.label)
 
     Parameters
     ----------
@@ -630,6 +632,13 @@ def plot_heatmap(
         instead of sample names.  Samples are still ordered by ordination
         (or original order when ``method=None``); only the tick text
         changes.  A warning is emitted if the column is not found.
+        Mirrors R phyloseq's ``sample.label``.
+    taxa_label:
+        Taxonomic rank (e.g. ``"Class"``) whose values label the y-axis
+        ticks instead of OTU/taxa names.  Taxa are still ordered by
+        ordination (or original order when ``method=None``); only the tick
+        text changes.  A warning is emitted if the rank is not found.
+        Mirrors R phyloseq's ``taxa.label``.
 
     Returns
     -------
@@ -694,6 +703,23 @@ def plot_heatmap(
                 .to_dict()
             )
             p = p + scale_x_discrete(labels=labels_dict)
+
+    if taxa_label is not None:
+        if ps.tax_table is None or taxa_label not in long_df.columns:
+            warnings.warn(
+                f"taxa_label '{taxa_label}' not found in tax_table; "
+                "using taxa names.",
+                stacklevel=2,
+            )
+        else:
+            taxa_labels_dict = (
+                long_df[["OTU", taxa_label]]
+                .drop_duplicates("OTU")
+                .set_index("OTU")[taxa_label]
+                .astype(str)
+                .to_dict()
+            )
+            p = p + scale_y_discrete(labels=taxa_labels_dict)
 
     if title:
         p = p + labs(title=title)

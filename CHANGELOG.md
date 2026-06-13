@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `plot_heatmap` — `method=None` skips ordination and preserves the original sample/taxa order; `label` relabels the x-axis ticks from a `sample_data` column; `taxa_label` relabels the y-axis ticks from a taxonomic rank. These mirror R phyloseq's `method=NULL`, `sample.label`, and `taxa.label`.
+
 ## [1.0.0] - 2026-06-03
 
 Initial release of pyloseq — a native Python port of R/Bioconductor
