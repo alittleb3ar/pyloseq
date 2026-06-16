@@ -32,6 +32,7 @@ from plotnine import (
     ggplot,
     labs,
     scale_fill_gradient,
+    scale_shape_manual,
     scale_size_continuous,
     scale_x_continuous,
     scale_x_discrete,
@@ -146,6 +147,7 @@ def plot_richness(
     color: str | None = None,
     measures: list[str] | None = None,
     title: str | None = None,
+    boxplot: bool = True,
 ) -> Any:
     """Alpha diversity box-and-point plots, faceted by measure.
 
@@ -168,6 +170,10 @@ def plot_richness(
         Diversity measures to include; default is all.
     title:
         Plot title.
+    boxplot:
+        If ``True`` (default), layer a box-and-whisker summary under the
+        points.  Set ``False`` for points only (e.g. when ``x`` groups few
+        samples and the boxes add noise).
 
     Returns
     -------
@@ -234,10 +240,10 @@ def plot_richness(
 
     p = ggplot(long, aes(**mapping))
 
-    # Boxplot only makes sense when x groups multiple samples; still harmless
-    # for per-sample x (renders as a degenerate box) and matches R, which
-    # always layers it.
-    p = p + geom_boxplot(alpha=0.5)
+    # Box-and-whisker *or* points, not both: the box summarises the same
+    # per-sample distribution the points would show, so layering both is
+    # redundant.  boxplot=True draws the box; boxplot=False draws the points.
+    p = p + geom_boxplot(alpha=0.5) if boxplot else p + geom_point(size=2)
 
     # Error bars where SE is available.
     if long["SE"].notna().any():
@@ -248,7 +254,6 @@ def plot_richness(
 
     p = (
         p
-        + geom_point(size=2)
         + facet_wrap("~Measure", scales="free_y")
         + theme(axis_text_x=element_text(rotation=90, hjust=1))
     )
@@ -735,7 +740,7 @@ def plot_heatmap(
 def make_network(
     ps: Phyloseq,
     kind: str = "samples",
-    distance: str = "jaccard",
+    distance: str | Any = "jaccard",
     max_dist: float = 0.4,
     keep_isolates: bool = False,
     **kwargs: Any,
@@ -746,6 +751,7 @@ def make_network(
     ``max_dist`` (matching R phyloseq's ``max.dist`` semantics).
 
     R reference: make_network(physeq, type, distance, max.dist, keep.isolates)
+    R reference: plot_net(physeq, distance=as.dist(...), ...)  — precomputed DM
 
     Parameters
     ----------
@@ -754,9 +760,10 @@ def make_network(
     kind:
         ``"samples"`` (default) or ``"taxa"``.
     distance:
-        Distance metric (see :func:`pyloseq.distance`).  For ``"jaccard"`` a
-        binary (presence/absence) Jaccard distance is used, consistent with
-        phyloseq's default network distance.
+        Distance metric string (see :func:`pyloseq.distance`) **or** a
+        precomputed ``skbio.stats.distance.DistanceMatrix``.  Passing a
+        ``DistanceMatrix`` mirrors R's ``plot_net(distance=as.dist(...))``
+        pattern (e.g. from :func:`pyloseq.gunifrac`).
     max_dist:
         Maximum distance for an edge to be drawn (strict ``<``).
     keep_isolates:
@@ -767,6 +774,8 @@ def make_network(
     networkx.Graph
 
     """
+    from skbio.stats.distance import DistanceMatrix as _DM
+
     if "type" in kwargs:
         warnings.warn(
             "The 'type' parameter is deprecated; use 'kind' instead.",
@@ -776,9 +785,9 @@ def make_network(
         kind = kwargs.pop("type")
 
     # Note: _distance handles presence/absence binarization internally for
-    # metrics that require it (e.g. jaccard), so we do not pass a binary flag
-    # here — scipy's pdist would reject it.
-    dm = _distance(ps, distance, kind=kind)
+    # metrics that require it (e.g. jaccard), so we do not pass a binary
+    # flag here — scipy's pdist would reject it.
+    dm = distance if isinstance(distance, _DM) else _distance(ps, distance, kind=kind)
     ids = list(dm.ids)
     data = np.array(dm.data)
 
@@ -875,16 +884,25 @@ def plot_network(
         rows.append(row)
     nodes_df = pd.DataFrame(rows)
 
-    # Edges data frame
+    # Edges data frame — include stored distance as "distance" column so that
+    # edge width can be mapped to it (closer samples → thicker line, matching R).
     edge_rows = []
-    for u, v in g.edges():
+    for u, v, attrs in g.edges(data=True):
         x0, y0 = pos[u]
         x1, y1 = pos[v]
-        edge_rows.append({"x": x0, "y": y0, "xend": x1, "yend": y1})
+        edge_rows.append(
+            {
+                "x": x0,
+                "y": y0,
+                "xend": x1,
+                "yend": y1,
+                "distance": attrs.get("weight", 0.0),
+            }
+        )
     edges_df = (
         pd.DataFrame(edge_rows)
         if edge_rows
-        else pd.DataFrame(columns=["x", "y", "xend", "yend"])
+        else pd.DataFrame(columns=["x", "y", "xend", "yend", "distance"])
     )
 
     # Only x/y go in the global aes so that geom_segment (which uses its own
@@ -899,16 +917,63 @@ def plot_network(
     p = ggplot(nodes_df, aes(x="x", y="y"))
 
     if not edges_df.empty:
+        # Map size to distance with an inverted range so that edges between
+        # more-similar samples (smaller distance) appear thicker — matching R's
+        # plot_net which uses scale_size_continuous(range=c(3, 0.5)).
         p = p + geom_segment(
             data=edges_df,
-            mapping=aes(x="x", y="y", xend="xend", yend="yend"),
+            mapping=aes(x="x", y="y", xend="xend", yend="yend", size="distance"),
             color=line_color,
-            size=line_weight,
             alpha=line_alpha,
         )
+        p = p + scale_size_continuous(range=(3, 0.5), name="Distance")
 
     pt_aes = aes(**point_mapping) if point_mapping else None
     p = p + geom_point(mapping=pt_aes, size=point_size)
+
+    # plotnine's default discrete shape palette has 6 entries. When the shape
+    # column has more unique values (e.g. 22 latrines), guide_legend.draw()
+    # crashes with an IndexError even with a custom scale. Suppress the shape
+    # legend in that case (shapes still differ in the plot; legend is
+    # unreadable at that scale anyway) and warn the caller.
+    _SHAPE_MARKERS = [
+        "o",
+        "s",
+        "^",
+        "v",
+        "<",
+        ">",
+        "D",
+        "p",
+        "*",
+        "h",
+        "H",
+        "d",
+        "P",
+        "X",
+        "8",
+        "1",
+        "2",
+        "3",
+        "4",
+        "+",
+        "x",
+        "|",
+        "_",
+    ]
+    if shape and shape in nodes_df.columns:
+        n_unique = nodes_df[shape].nunique()
+        if n_unique > 6:
+            warnings.warn(
+                f"plot_network: shape='{shape}' has {n_unique} unique values "
+                f"(> 6). Shapes are still drawn distinctly but the shape legend "
+                f"is suppressed to avoid a plotnine rendering crash.",
+                stacklevel=2,
+            )
+            p = p + scale_shape_manual(
+                values=_SHAPE_MARKERS[:n_unique],
+                breaks=[],  # empty breaks → no legend keys → avoids plotnine crash
+            )
 
     if label and label in nodes_df.columns:
         y_range = (nodes_df["y"].max() - nodes_df["y"].min()) or 1.0
