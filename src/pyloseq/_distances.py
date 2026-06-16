@@ -198,6 +198,167 @@ def unifrac(
 
 
 # ---------------------------------------------------------------------------
+# Generalized UniFrac
+# ---------------------------------------------------------------------------
+
+
+def gunifrac(
+    ps: Phyloseq,
+    alpha: tuple[float, ...] = (0, 0.5, 1),
+) -> dict[str, DistanceMatrix]:
+    """Compute Generalized UniFrac distance matrices.
+
+    Implements the GUniFrac family from Chen et al. (2012) *Bioinformatics*
+    28(16):2106-2113, matching the R ``GUniFrac`` package API.
+
+    R reference: GUniFrac(otu.tab, tree, alpha=c(0, 0.5, 1))$unifracs
+
+    Parameters
+    ----------
+    ps:
+        ``Phyloseq`` object with both ``otu_table`` and ``phy_tree``.
+    alpha:
+        Exponents to compute. Each value in ``[0, 1]`` produces one distance
+        matrix keyed ``"d_{alpha}"`` (e.g. ``"d_0.5"``). Alpha = 0 gives the
+        same result as unweighted UniFrac; alpha = 1 gives (un-normalised)
+        weighted UniFrac.
+
+    Returns
+    -------
+    dict mapping:
+
+    - ``"d_{a}"`` for each ``a`` in *alpha* — GUniFrac at that exponent.
+      ``d_0`` equals ``d_UW``; ``d_1`` equals normalized weighted UniFrac.
+    - ``"d_UW"``  — unweighted UniFrac as defined in R's GUniFrac package
+      (fraction of branches where cumulative proportions differ; see note below)
+    - ``"d_VAW"`` — variance-adjusted weighted UniFrac (Hamady et al. 2010)
+
+    .. note::
+        ``d_UW`` from this function matches R's ``GUniFrac`` package definition,
+        which counts any branch whose cumulative proportion differs between the
+        two samples (including branches shared by both but in different amounts).
+        This differs slightly from scikit-bio / :func:`unifrac` which counts only
+        branches exclusive to one sample (the Lozupone & Knight 2005 definition).
+    """
+    if ps.phy_tree is None:
+        raise pyloseqValidationError("gunifrac requires phy_tree")
+
+    tree = ps.phy_tree._tree
+    tree_tips = {n.name for n in tree.tips()}
+
+    otu_df = _otu_samples_rows(ps)
+    taxa_in_tree = [t for t in otu_df.columns if t in tree_tips]
+    if not taxa_in_tree:
+        raise pyloseqValidationError(
+            "No taxa names match tree tip labels. "
+            "Check that taxa_names and tree tip names are consistent."
+        )
+    otu_df = otu_df[taxa_in_tree]
+
+    row_sums = otu_df.sum(axis=1)
+    row_sums[row_sums == 0] = 1.0
+    prop_df = otu_df.div(row_sums, axis=0)
+
+    sample_ids = list(prop_df.index)
+    n = len(sample_ids)
+    prop_mat = prop_df.values.astype(float)  # (n_samples, n_taxa)
+    tip_to_col: dict[str, int] = {t: i for i, t in enumerate(prop_df.columns)}
+
+    # Post-order traversal: accumulate cumulative proportions per branch.
+    # cp[b, s] = sum of sample s's relative abundances in the subtree above
+    # branch b.  bl[b] = length of branch b.
+    branch_lengths: list[float] = []
+    cum_props_list: list[np.ndarray] = []
+    node_props: dict[object, np.ndarray] = {}
+
+    for node in tree.postorder():
+        if node.is_tip():
+            name = node.name
+            if name in tip_to_col:
+                node_props[node] = prop_mat[:, tip_to_col[name]].copy()
+            else:
+                node_props[node] = np.zeros(n)
+        else:
+            node_props[node] = np.sum([node_props[c] for c in node.children], axis=0)
+
+        if node.length is not None and node.parent is not None and node.length > 0:
+            branch_lengths.append(float(node.length))
+            cum_props_list.append(node_props[node].copy())
+
+    bl = np.array(branch_lengths, dtype=float)  # (n_branches,)
+    cp = np.array(cum_props_list, dtype=float)  # (n_branches, n_samples)
+
+    results: dict[str, DistanceMatrix] = {}
+
+    def _make_dm(data: np.ndarray) -> DistanceMatrix:
+        return DistanceMatrix(data, ids=sample_ids)
+
+    # --- GUniFrac d_alpha ---
+    # Formula from R's GUniFrac package (Chen et al. 2012):
+    #   diff = |p_bi - p_bj| / (p_bi + p_bj)      (relative difference, ∈ [0,1])
+    #   w    = l_b * (p_bi + p_bj)^alpha            (branch weight)
+    #   d_alpha(i,j) = sum(diff * w) / sum(w)
+    #                = sum(l_b * |p1-p2| * (p1+p2)^(alpha-1)) / sum(l_b * (p1+p2)^alpha)
+    # Valid for alpha >= 0.  alpha=1 reduces to weighted UniFrac.
+    # alpha=0: diff/s is bounded in [0,1] since |p1-p2| <= p1+p2, so s^(-1) is safe.
+    for a in alpha:
+        dm = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                pi = cp[:, i]
+                pj = cp[:, j]
+                mask = (pi + pj) > 0
+                if not mask.any():
+                    continue
+                bm = bl[mask]
+                diff = np.abs(pi[mask] - pj[mask])
+                s = pi[mask] + pj[mask]
+                num = np.dot(bm, diff * s ** (a - 1))
+                den = np.dot(bm, s**a)
+                dm[i, j] = dm[j, i] = num / den if den > 0 else 0.0
+        results[f"d_{a}"] = _make_dm(dm)
+
+    # --- Unweighted UniFrac (d_UW) ---
+    # Standard unweighted UniFrac: binarize cumulative proportions first, then
+    # compute the fraction of shared branch length that is unique to one sample.
+    # Numerator = branch length present in exactly one sample (XOR of presence).
+    # Denominator = branch length present in at least one sample.
+    dm_uw = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            I1 = cp[:, i] > 0
+            I2 = cp[:, j] > 0
+            either = I1 | I2
+            unique = I1 ^ I2
+            den = bl[either].sum()
+            v = bl[unique].sum() / den if den > 0 else 0.0
+            dm_uw[i, j] = dm_uw[j, i] = v
+    results["d_UW"] = _make_dm(dm_uw)
+
+    # --- Variance-adjusted weighted UniFrac (d_VAW) ---
+    # d_VAW(i,j) = sqrt( sum_b b*(p_bi - p_bj)^2/(p_bi+p_bj) )
+    #            / sqrt( sum_b b*(p_bi + p_bj) )
+    dm_vaw = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            pi = cp[:, i]
+            pj = cp[:, j]
+            s = pi + pj
+            mask = s > 0
+            if not mask.any():
+                continue
+            bm = bl[mask]
+            diff = pi[mask] - pj[mask]
+            sm = s[mask]
+            num = np.dot(bm, diff**2 / sm)
+            den = np.dot(bm, sm)
+            dm_vaw[i, j] = dm_vaw[j, i] = np.sqrt(num / den) if den > 0 else 0.0
+    results["d_VAW"] = _make_dm(dm_vaw)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Non-phylogenetic distances (scipy-backed)
 # ---------------------------------------------------------------------------
 

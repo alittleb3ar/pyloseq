@@ -401,6 +401,7 @@ class TestPlotHeatmap:
         p = plot_heatmap(ps_plot, method=None, label="Group")
         scale = next(s for s in p.scales if isinstance(s, ScaleXDiscrete))
         # labels dict maps each sample name to its Group value
+        assert isinstance(scale.labels, dict)
         assert set(scale.labels.values()) == {"A", "B"}
 
     def test_label_missing_warns(self, ps_plot: Phyloseq) -> None:
@@ -416,6 +417,7 @@ class TestPlotHeatmap:
         p = plot_heatmap(ps_plot, method=None, taxa_label="Phylum")
         scale = next(s for s in p.scales if isinstance(s, ScaleYDiscrete))
         # labels dict maps each OTU name to its Phylum value
+        assert isinstance(scale.labels, dict)
         assert set(scale.labels.values()) == {f"P{i}" for i in range(6)}
 
     def test_taxa_label_missing_warns(self, ps_plot: Phyloseq) -> None:
