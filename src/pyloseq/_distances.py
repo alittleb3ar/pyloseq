@@ -228,9 +228,9 @@ def gunifrac(
     dict mapping:
 
     - ``"d_{a}"`` for each ``a`` in *alpha* — GUniFrac at that exponent.
-      ``d_0`` equals ``d_UW``; ``d_1`` equals normalized weighted UniFrac.
+        ``d_0`` equals ``d_UW``; ``d_1`` equals normalized weighted UniFrac.
     - ``"d_UW"``  — unweighted UniFrac as defined in R's GUniFrac package
-      (fraction of branches where cumulative proportions differ; see note below)
+        (fraction of branches where cumulative proportions differ; see note below)
     - ``"d_VAW"`` — variance-adjusted weighted UniFrac (Hamady et al. 2010)
 
     .. note::
