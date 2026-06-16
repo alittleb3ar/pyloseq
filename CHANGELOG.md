@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `gunifrac` — Generalized UniFrac distance matrices (Chen et al. 2012 *Bioinformatics* 28:2106–2113); returns a dict of `DistanceMatrix` objects keyed `"d_{alpha}"`, `"d_UW"`, and `"d_VAW"`. Matches R `GUniFrac` package API.
+- `plot_richness`: new `boxplot` parameter (default `True`); set `False` for a points-only plot when boxes add noise to small groups.
+- `make_network`: `distance` now accepts a precomputed `skbio.stats.distance.DistanceMatrix` in addition to a metric name string — enables use of custom distances such as those returned by `gunifrac`.
+- `plot_network`: edge width is now scaled inversely by distance (closer samples → thicker line), matching R `plot_net`. Shape legends with > 6 unique values are suppressed automatically to avoid a plotnine rendering crash.
 - `plot_heatmap` — `method=None` skips ordination and preserves the original sample/taxa order; `label` relabels the x-axis ticks from a `sample_data` column; `taxa_label` relabels the y-axis ticks from a taxonomic rank. These mirror R phyloseq's `method=NULL`, `sample.label`, and `taxa.label`.
+- New example notebook: Torondel et al. (2016) pit-latrine microbiome case study demonstrating GUniFrac-based network analysis.
 
 ## [1.0.0] - 2026-06-03
 

@@ -42,12 +42,15 @@ p = plot_bar(ps, fill="Phylum") + theme_bw()
 
 ## plot_richness
 
-Alpha diversity plot with points, boxplots, and optional error bars. Facets by measure:
+Alpha diversity plot faceted by measure. By default each panel shows a box-and-whisker summary; set `boxplot=False` for a points-only view (useful when `x` groups only a few samples and boxes add noise):
 
 ```python
 p = plot_richness(ps, x="SampleType", color="SampleType",
                   measures=["Shannon", "Simpson"])
 p.draw()
+
+# Points only — no boxes
+p = plot_richness(ps, x="SampleType", color="SampleType", boxplot=False)
 ```
 
 Standard-error whiskers are drawn automatically for measures that have a corresponding `se.*` column in the `estimate_richness` output (currently only `se.chao1`).
@@ -165,15 +168,28 @@ p = plot_tree(ps, method="sampledodge", color="SampleType", size="Abundance")
 
 ## make_network / plot_network
 
-`make_network` builds a `networkx.Graph` where nodes are samples and edges connect samples whose distance is below `max_distance`:
+`make_network` builds a `networkx.Graph` where nodes are samples and edges connect samples whose distance is below `max_dist`:
 
 ```python
 from pyloseq import make_network, plot_network
 
-g = make_network(ps, max_distance=0.4, distance="bray")
+g = make_network(ps, max_dist=0.4, distance="bray")
 p = plot_network(g, ps, color="SampleType", label="SampleID")
 p.draw()
 ```
+
+The `distance` parameter accepts either a metric name string (see [`distance`](diversity.md#distance)) **or** a precomputed `skbio.stats.distance.DistanceMatrix` — mirroring R's `plot_net(distance=as.dist(...))` pattern. This makes it straightforward to use phylogenetic distances from `gunifrac`:
+
+```python
+from pyloseq import gunifrac, make_network, plot_network
+
+results = gunifrac(ps)
+g = make_network(ps, distance=results["d_0.5"], max_dist=0.5)
+p = plot_network(g, ps, color="SampleType")
+p.draw()
+```
+
+**Edge width** is scaled inversely by distance: edges between more-similar samples appear thicker, matching R's `plot_net`. If the `shape` aesthetic maps to more than 6 unique values, the shape legend is suppressed automatically (shapes are still distinct in the plot) and a warning is issued — plotnine's default shape palette has only 6 entries.
 
 Node attributes from `sample_data` are attached to each node automatically, making the graph available for further networkx analysis.
 

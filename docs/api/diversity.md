@@ -108,6 +108,49 @@ dm_w  = unifrac(ps, weighted=True, normalized=True)
 
 ::: pyloseq.unifrac
 
+### gunifrac
+
+Computes the Generalized UniFrac family of distance matrices (Chen et al. 2012
+*Bioinformatics* 28:2106–2113), matching the R `GUniFrac` package API:
+
+```python
+from pyloseq import gunifrac
+
+results = gunifrac(ps)                   # default alpha=(0, 0.5, 1)
+dm_half = results["d_0.5"]              # GUniFrac at alpha=0.5
+dm_uw   = results["d_UW"]               # unweighted UniFrac
+dm_vaw  = results["d_VAW"]              # variance-adjusted weighted UniFrac
+```
+
+**Return value** — a `dict` of `skbio.stats.distance.DistanceMatrix` objects:
+
+| Key | Description |
+|---|---|
+| `"d_{a}"` | GUniFrac at exponent *a* for each value in `alpha` (e.g. `"d_0.5"`) |
+| `"d_UW"` | Unweighted UniFrac (Chen 2012 definition) |
+| `"d_VAW"` | Variance-adjusted weighted UniFrac (Hamady et al. 2010) |
+
+Alpha = 0 up-weights rare lineages; alpha = 1 is equivalent to normalized weighted
+UniFrac. The default `alpha=(0, 0.5, 1)` covers the full range.
+
+**Piping into `make_network`:**
+
+```python
+from pyloseq import make_network, plot_network
+
+g = make_network(ps, distance=results["d_0.5"], max_dist=0.5)
+p = plot_network(g, ps, color="SampleType")
+```
+
+!!! note
+    `d_UW` from `gunifrac` matches R's `GUniFrac` package definition, which counts any
+    branch whose cumulative proportion differs between the two samples (including
+    branches shared by both but at different abundances). This differs slightly from
+    `unifrac()`, which uses the Lozupone & Knight (2005) definition counting only
+    branches exclusive to one sample.
+
+::: pyloseq.gunifrac
+
 ### distance_method_list
 
 Returns all supported methods grouped by backend:
