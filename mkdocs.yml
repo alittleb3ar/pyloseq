@@ -68,6 +68,7 @@ nav:
     - McMurdie & Holmes (2013): notebooks/mcmurdie_holmes_2013.ipynb
     - Torondel et al. (2016) — Latrines: notebooks/07_torondel_2016_pit_latrines.ipynb
     - Strano et al. (2023) — Sponge Microbiome: notebooks/08_strano_2023_sponge_microbiome.ipynb
+    - Garrido-Sanz & Keel (2025) — RhizCom Propagation: notebooks/09_garrido_sanz_2025_rhizcom.ipynb
   - Containers: containers.md
   - Developer:
     - Golden Files: golden_files.md
