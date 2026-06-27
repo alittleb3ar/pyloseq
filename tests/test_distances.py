@@ -8,17 +8,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import requires_golden
 from skbio.stats.distance import DistanceMatrix
 
 import pyloseq
 from pyloseq import OtuTable, Phyloseq, PhyTree, distance, distance_method_list, unifrac
 from pyloseq.datasets.fixtures import load_esophagus_reference
 
-GOLDEN_DIR = Path("tests/golden")
-ES_GOLDEN = GOLDEN_DIR / "esophagus"
-ES_PRESENT = (ES_GOLDEN / "otu_table.parquet").exists()
-UF_UN_PRESENT = (ES_GOLDEN / "unifrac_unweighted" / "normalized.parquet").exists()
-UF_WT_PRESENT = (ES_GOLDEN / "unifrac_weighted" / "normalized.parquet").exists()
+_GOLDEN = Path(__file__).parent / "golden"
 
 
 def _load_esophagus() -> Phyloseq:
@@ -105,14 +102,13 @@ def test_unifrac_via_distance(ps_with_tree: Phyloseq) -> None:
     np.testing.assert_allclose(np.array(dm1.data), np.array(dm2.data), atol=1e-12)
 
 
-@pytest.mark.skipif(
-    not (ES_PRESENT and UF_UN_PRESENT), reason="golden files not generated yet"
-)
+@requires_golden("esophagus", "unifrac_unweighted", "normalized.parquet")
+
 def test_unweighted_unifrac_matches_r_esophagus() -> None:
     ps = _load_esophagus()
     dm = unifrac(ps, weighted=False, normalized=True)
 
-    golden = pd.read_parquet(ES_GOLDEN / "unifrac_unweighted" / "normalized.parquet")
+    golden = pd.read_parquet(_GOLDEN / "esophagus" / "unifrac_unweighted" / "normalized.parquet")
     if "__index__" in golden.columns:
         golden = golden.set_index("__index__")
         golden.index.name = None
@@ -129,14 +125,13 @@ def test_unweighted_unifrac_matches_r_esophagus() -> None:
                 )
 
 
-@pytest.mark.skipif(
-    not (ES_PRESENT and UF_WT_PRESENT), reason="golden files not generated yet"
-)
+@requires_golden("esophagus", "unifrac_weighted", "normalized.parquet")
+
 def test_weighted_unifrac_matches_r_esophagus() -> None:
     ps = _load_esophagus()
     dm = unifrac(ps, weighted=True, normalized=True)
 
-    golden = pd.read_parquet(ES_GOLDEN / "unifrac_weighted" / "normalized.parquet")
+    golden = pd.read_parquet(_GOLDEN / "esophagus" / "unifrac_weighted" / "normalized.parquet")
     if "__index__" in golden.columns:
         golden = golden.set_index("__index__")
         golden.index.name = None

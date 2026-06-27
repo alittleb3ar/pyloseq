@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any
 
 import pandas as pd
 import pytest
@@ -34,9 +33,9 @@ def test_load_missing_dataset_raises() -> None:
         _load_dataset("nonexistent_dataset_xyz")
 
 
-def test_global_patterns_loads(benchmark: Any) -> None:
+def test_global_patterns_loads() -> None:
 
-    result = benchmark(load_global_patterns_reference)
+    result = load_global_patterns_reference()
     assert "otu_table" in result
     assert "taxa_sums" in result
     assert "sample_sums" in result
