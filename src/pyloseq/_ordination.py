@@ -298,7 +298,7 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     otu_df = _otu_samples_rows(ps)  # samples x taxa
     N: np.ndarray = otu_df.values.astype(float)
 
-    grand_total = N.sum()
+    grand_total: float = N.sum()
     if grand_total <= 0:
         raise pyloseqValidationError("CA requires a non-empty count table")
 
