@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -87,7 +87,7 @@ def estimate_richness(
         }
 
     df = pd.DataFrame.from_dict(rows, orient="index")
-    return cast(pd.DataFrame, df[measures])
+    return df[measures]
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ def estimate_richness(
 
 def _richness_single(raw: np.ndarray, measures: list[str]) -> dict[str, float]:
     """Compute richness measures for one sample's count vector."""
-    counts = raw.astype(float)
+    counts: np.ndarray = raw.astype(float)
     counts_int = np.round(counts).astype(int)
     nonzero = counts_int[counts_int > 0]
 

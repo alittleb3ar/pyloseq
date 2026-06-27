@@ -108,8 +108,8 @@ def multi_tax_test(
 
     otu_df = _otu_taxa_rows(ps).reindex(columns=g1_samples + g2_samples)
 
-    a = otu_df[g1_samples].values.astype(float)  # (M, n1)
-    b = otu_df[g2_samples].values.astype(float)  # (M, n2)
+    a: np.ndarray = otu_df[g1_samples].values.astype(float)  # (M, n1)
+    b: np.ndarray = otu_df[g2_samples].values.astype(float)  # (M, n2)
 
     stats, rawp = _test_all_taxa(a, b, test=test, alternative=alternative)
 
@@ -129,19 +129,16 @@ def multi_tax_test(
     else:
         adjp = _adjust_pvalues(rawp, method=method)
 
-    return cast(
-        pd.DataFrame,
-        pd.DataFrame(
-            {
-                "statistic": stats,
-                "rawp": rawp,
-                "adjp": adjp,
-                f"mean_{g1_label}": a.mean(axis=1),
-                f"mean_{g2_label}": b.mean(axis=1),
-            },
-            index=otu_df.index,
-        ).sort_values("adjp"),
-    )
+    return pd.DataFrame(
+        {
+            "statistic": stats,
+            "rawp": rawp,
+            "adjp": adjp,
+            f"mean_{g1_label}": a.mean(axis=1),
+            f"mean_{g2_label}": b.mean(axis=1),
+        },
+        index=otu_df.index,
+    ).sort_values("adjp")
 
 
 # ---------------------------------------------------------------------------
@@ -188,9 +185,9 @@ def _adjust_pvalues(pvals: np.ndarray, method: str) -> np.ndarray:
     if method in ("BH", "BY"):
         from scipy.stats import false_discovery_control  # noqa: PLC0415
 
-        return np.asarray(
-            false_discovery_control(pvals, method=method.lower()),
-            dtype=float,
+        return cast(
+            np.ndarray,
+            np.asarray(false_discovery_control(pvals, method=method.lower()), dtype=float),
         )
 
     if method == "bonferroni":
@@ -254,7 +251,7 @@ def _westfall_young_fwer(
     order = np.argsort(obs_pvals)  # most significant first
     sorted_obs = obs_pvals[order]
 
-    exceed = np.zeros(M, dtype=np.intp)
+    exceed: np.ndarray = np.zeros(M, dtype=np.intp)
 
     for _ in range(n_perm):
         perm = rng.permutation(N)

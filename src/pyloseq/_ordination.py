@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -188,7 +188,7 @@ def _parse_formula(ps: Phyloseq, formula: str | None) -> pd.DataFrame:
         )
     sub = sam_df[terms]
     # Dummy-encode categorical/object columns so RDA/CCA get numeric input
-    return cast(pd.DataFrame, pd.get_dummies(sub, drop_first=True).astype(float))
+    return pd.get_dummies(sub, drop_first=True).astype(float)
 
 
 def _cca(ps: Phyloseq, formula: str | None, **kwargs: Any) -> Any:
@@ -296,7 +296,7 @@ def _ca(ps: Phyloseq, scaling: int = 1, **kwargs: Any) -> Any:
     """
 
     otu_df = _otu_samples_rows(ps)  # samples x taxa
-    N = otu_df.values.astype(float)
+    N: np.ndarray = otu_df.values.astype(float)
 
     grand_total = N.sum()
     if grand_total <= 0:

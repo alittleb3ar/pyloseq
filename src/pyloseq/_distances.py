@@ -180,7 +180,7 @@ def unifrac(
         )
     otu_df = otu_df[taxa_in_tree]
 
-    counts = otu_df.values.astype(int)
+    counts: np.ndarray = otu_df.values.astype(int)
     sample_ids = list(otu_df.index)
     otu_ids = list(otu_df.columns)
 
@@ -261,7 +261,7 @@ def gunifrac(
 
     sample_ids = list(prop_df.index)
     n = len(sample_ids)
-    prop_mat = prop_df.values.astype(float)  # (n_samples, n_taxa)
+    prop_mat: np.ndarray = prop_df.values.astype(float)  # (n_samples, n_taxa)
     tip_to_col: dict[str, int] = {t: i for i, t in enumerate(prop_df.columns)}
 
     # Post-order traversal: accumulate cumulative proportions per branch.
@@ -380,7 +380,7 @@ def _scipy_distance(
     if kind == "taxa":
         otu_df = otu_df.T  # -> taxa x samples
 
-    mat = otu_df.values.astype(float)
+    mat: np.ndarray = otu_df.values.astype(float)
     if binarize:
         mat = (mat > 0).astype(float)
 
@@ -402,7 +402,7 @@ def _jsd_distance(ps: Phyloseq, kind: str = "samples") -> Any:
     if kind == "taxa":
         otu_df = otu_df.T
 
-    mat = otu_df.values.astype(float)
+    mat: np.ndarray = otu_df.values.astype(float)
     # Normalise rows to sum to 1 (probability distributions)
     row_sums = mat.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1.0
@@ -437,7 +437,7 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
             "No shared taxa between frequency table and species distance matrix"
         )
 
-    W = freq_table[common].values.astype(float)  # n x p
+    W: np.ndarray = freq_table[common].values.astype(float)  # n x p
     common_idx = [species_ids.index(t) for t in common]
     D_sub = D[np.ix_(common_idx, common_idx)]
     p = len(common)

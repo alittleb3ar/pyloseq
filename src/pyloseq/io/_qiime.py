@@ -6,8 +6,6 @@ R reference: phyloseq::import_qiime(otufilename, mapfilename, treefilename, refs
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
-
 import pandas as pd
 
 from pyloseq._otu_table import OtuTable
@@ -124,4 +122,4 @@ def _read_qiime1_mapping(path: Path) -> pd.DataFrame:
     df.index.name = None
     # Drop blank lines that some exporters add
     df = df.dropna(how="all")
-    return cast(pd.DataFrame, df)
+    return df

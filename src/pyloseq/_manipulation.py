@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -431,7 +431,7 @@ def rarefy_even_depth(
             prob = counts / total
             new_counts = rng.multinomial(sample_size, prob).astype(float)
         else:
-            pool = np.repeat(np.arange(len(counts)), counts)
+            pool: np.ndarray = np.repeat(np.arange(len(counts)), counts)
             chosen = rng.choice(pool, size=sample_size, replace=False)
             new_counts = np.bincount(chosen, minlength=len(counts)).astype(float)
         rarefied_cols[str(col)] = new_counts
@@ -923,4 +923,4 @@ def psmelt(ps: Phyloseq) -> pd.DataFrame:
         tax_df = ps.tax_table.to_frame()
         long = long.merge(tax_df, left_on="OTU", right_index=True, how="left")
 
-    return cast(pd.DataFrame, long.reset_index(drop=True))
+    return long.reset_index(drop=True)
