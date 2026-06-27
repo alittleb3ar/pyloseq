@@ -10,6 +10,7 @@ R reference: phyloseq::import_mothur(mothur_list_file, mothur_group_file,
 from __future__ import annotations
 
 from pathlib import Path
+
 import pandas as pd
 
 from pyloseq._otu_table import OtuTable
