@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyloseq"
-version = "1.0.0"
+version = "1.1.0"
 description = "A native Python port of R/Bioconductor phyloseq — PyData-native microbiome analysis"
 readme = "README.md"
 license = { file = "LICENSE" }
