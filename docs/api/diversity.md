@@ -135,13 +135,16 @@ dm_uw   = results["d_UW"]               # unweighted UniFrac
 dm_vaw  = results["d_VAW"]              # variance-adjusted weighted UniFrac
 ```
 
-**Return value** — a `dict` of `skbio.stats.distance.DistanceMatrix` objects:
+**Return value** — a `GUnifracResult` (exported from `pyloseq`). Supports subscript access, `.keys()`, `.values()`, and `.items()` like a dict, and exposes fixed matrices as attributes:
 
-| Key | Description |
+| Key / attribute | Description |
 |---|---|
-| `"d_{a}"` | GUniFrac at exponent *a* for each value in `alpha` (e.g. `"d_0.5"`) |
-| `"d_UW"` | Unweighted UniFrac (Chen 2012 definition) |
-| `"d_VAW"` | Variance-adjusted weighted UniFrac (Hamady et al. 2010) |
+| `result["d_{a}"]` / `result.d_0_5` | GUniFrac at exponent *a* for each value in `alpha` (e.g. `"d_0.5"`) |
+| `result["d_UW"]` / `result.d_UW` | Unweighted UniFrac (Chen 2012 definition) |
+| `result["d_VAW"]` / `result.d_VAW` | Variance-adjusted weighted UniFrac (Hamady et al. 2010) |
+
+!!! note
+    `isinstance(result, dict)` and `.get()` no longer work — use subscript or attribute access instead.
 
 Alpha = 0 up-weights rare lineages; alpha = 1 is equivalent to normalized weighted
 UniFrac. The default `alpha=(0, 0.5, 1)` covers the full range.
