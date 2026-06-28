@@ -1,8 +1,8 @@
-# pyloseq
+# pyloseq — Python Microbiome Analysis (phyloseq port)
 
-pyloseq is a Python port of the R/Bioconductor [phyloseq](https://joey711.github.io/phyloseq/) package. It represents microbiome data as a single object that bundles an OTU/feature table with optional sample metadata, taxonomic annotations, a phylogenetic tree, and reference sequences. All analysis functions — diversity, ordination, hypothesis testing, plotting — operate on that object directly.
+**pyloseq** is a Python port of R's [phyloseq](https://joey711.github.io/phyloseq/) Bioconductor package for microbiome data analysis. Built on the PyData stack (NumPy, pandas, scikit-bio), it provides the same workflow — BIOM/QIIME2 import, alpha/beta diversity, ordination, and publication-quality plots — without leaving Python.
 
-The library is built on the PyData stack and is designed for workflows that already use pandas, NumPy, and scikit-bio. Every public function includes an `R reference:` block in its docstring showing the equivalent phyloseq signature.
+Microbiome data is represented as a single `Phyloseq` object bundling an OTU/feature table with optional sample metadata, taxonomic annotations, a phylogenetic tree, and reference sequences. All analysis functions — diversity, ordination, hypothesis testing, plotting — operate on that object directly. Every public function includes an `R reference:` block in its docstring showing the equivalent phyloseq signature.
 
 ## Installation
 
