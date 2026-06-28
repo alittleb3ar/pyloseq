@@ -10,7 +10,7 @@ from skbio.stats.distance import DistanceMatrix
 from skbio.stats.ordination import OrdinationResults, cca, pcoa, rda
 from sklearn.manifold import MDS
 
-from pyloseq._distances import _dpcoa_manual
+from pyloseq._distances import _dpcoa_manual, _prepare_dpcoa
 from pyloseq._distances import distance as _distance
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
@@ -263,18 +263,7 @@ def _dpcoa_ordinate(ps: Phyloseq, **kwargs: Any) -> Any:
     if ps.phy_tree is None:
         raise pyloseqValidationError("DPCoA ordination requires phy_tree")
 
-    tree_node = ps.phy_tree._tree
-    dm_species = tree_node.tip_tip_distances()
-
-    otu_df = _otu_samples_rows(ps)
-
-    common = [t for t in dm_species.ids if t in otu_df.columns]
-    otu_df = otu_df[common]
-
-    row_sums = otu_df.sum(axis=1)
-    row_sums[row_sums == 0] = 1.0
-    freq_table = otu_df.div(row_sums, axis=0)
-
+    freq_table, dm_species = _prepare_dpcoa(ps)
     return _dpcoa_manual(freq_table, dm_species)
 
 

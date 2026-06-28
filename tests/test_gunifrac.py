@@ -11,7 +11,7 @@ import skbio.tree
 from skbio.stats.distance import DistanceMatrix
 
 import pyloseq
-from pyloseq import OtuTable, Phyloseq, PhyTree, gunifrac
+from pyloseq import GUnifracResult, OtuTable, Phyloseq, PhyTree, gunifrac
 
 # ---------------------------------------------------------------------------
 # Fixtures and expected values
@@ -116,10 +116,10 @@ def _make_chen_ps() -> Phyloseq:
 # ===========================================================================
 
 
-def test_gunifrac_returns_dict_of_distance_matrices() -> None:
+def test_gunifrac_returns_gunifrac_result() -> None:
     ps = _make_simple_ps(_SIMPLE_2S)
     result = gunifrac(ps)
-    assert isinstance(result, dict)
+    assert isinstance(result, GUnifracResult)
     for v in result.values():
         assert isinstance(v, DistanceMatrix)
 
@@ -239,8 +239,8 @@ def test_gunifrac_identical_samples_zero() -> None:
 # ===========================================================================
 
 
-def _simple_result() -> dict[str, DistanceMatrix]:
-    return gunifrac(_make_simple_ps(_SIMPLE_2S), alpha=(0, 0.5, 1))  # type: ignore[no-any-return]
+def _simple_result() -> GUnifracResult:
+    return gunifrac(_make_simple_ps(_SIMPLE_2S), alpha=(0, 0.5, 1))
 
 
 def test_gunifrac_d1_known_value() -> None:
