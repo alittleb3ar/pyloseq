@@ -10,7 +10,6 @@ R reference: phyloseq::import_mothur(mothur_list_file, mothur_group_file,
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 import pandas as pd
 
@@ -142,7 +141,7 @@ def _to_numeric_frame(
                 f"for sample {first_label!r} in {source}{label_hint}"
             )
         out[col] = converted
-    return cast(pd.DataFrame, pd.DataFrame(out, index=df.index).astype(float))
+    return pd.DataFrame(out, index=df.index).astype(float)
 
 
 def _read_shared(path: Path, cutoff: str | None) -> pd.DataFrame:
@@ -191,7 +190,7 @@ def _list_group_to_otu(
             if seq in seq_to_sample:
                 counts[seq_to_sample[seq]][otu_name] += 1
 
-    return cast(pd.DataFrame, pd.DataFrame.from_dict(counts, orient="index")[otu_names])
+    return pd.DataFrame.from_dict(counts, orient="index")[otu_names]
 
 
 def _read_constaxonomy(path: Path) -> pd.DataFrame:
@@ -218,6 +217,4 @@ def _read_constaxonomy(path: Path) -> pd.DataFrame:
         parts += [""] * max(0, len(ranks) - len(parts))
         parsed[str(otu_id)] = parts[: len(ranks)]
 
-    return cast(
-        pd.DataFrame, pd.DataFrame.from_dict(parsed, orient="index", columns=ranks)
-    )
+    return pd.DataFrame.from_dict(parsed, orient="index", columns=ranks)

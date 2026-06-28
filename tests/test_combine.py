@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from io import StringIO
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 import skbio
-import skbio.tree
+from conftest import _make_ps, _make_ps_with_refseq, _make_ps_with_tree, requires_golden
 
 import pyloseq
 from pyloseq import (
     OtuTable,
     Phyloseq,
-    PhyTree,
     RefSeq,
     SampleData,
     TaxTable,
@@ -28,96 +26,11 @@ from pyloseq import (
 )
 from pyloseq.datasets.fixtures import load_global_patterns_reference
 
-GOLDEN_DIR = Path("tests/golden")
-GP_GOLDEN = GOLDEN_DIR / "GlobalPatterns"
-GP_TAXGLOM_PRESENT = (GP_GOLDEN / "tax_glom_Family" / "taxa_sums.parquet").exists()
-GP_MERGESAM_PRESENT = (
-    GP_GOLDEN / "merge_samples_SampleType" / "sample_sums.parquet"
-).exists()
-
-
-def _make_ps(
-    ntaxa: int = 6,
-    nsamples: int = 4,
-    with_sam: bool = True,
-    with_tax: bool = True,
-    rng: np.random.Generator | None = None,
-) -> Phyloseq:
-    if rng is None:
-        rng = np.random.default_rng(0)
-    counts = rng.integers(0, 50, size=(ntaxa, nsamples)).astype(float)
-    taxa = [f"OTU{i + 1}" for i in range(ntaxa)]
-    samples = [f"S{i + 1}" for i in range(nsamples)]
-    df = pd.DataFrame(counts, index=taxa, columns=samples)
-    otu = OtuTable(df, taxa_are_rows=True)
-
-    sam = None
-    if with_sam:
-        sam_df = pd.DataFrame(
-            {
-                "Group": ["A", "A", "B", "B"][:nsamples],
-                "Depth": [100.0, 200.0, 150.0, 250.0][:nsamples],
-            },
-            index=samples,
-        )
-        sam = SampleData(sam_df)
-
-    tax = None
-    if with_tax:
-        phylum_vals = [
-            "Firmicutes",
-            "Firmicutes",
-            "Bacteroidetes",
-            "Proteobacteria",
-            "Proteobacteria",
-            "Chlamydiae",
-        ][:ntaxa]
-        genus_vals = ["Genus_A", "Genus_A", "Genus_B", "Genus_C", "Genus_D", "Genus_E"][
-            :ntaxa
-        ]
-        tax_df = pd.DataFrame(
-            {"Phylum": phylum_vals, "Genus": genus_vals},
-            index=taxa,
-        )
-        tax = TaxTable(tax_df)
-
-    return Phyloseq(otu=otu, sam=sam, tax=tax)
-
-
-def _make_ps_with_tree() -> Phyloseq:
-    newick = "((OTU1:0.1,OTU2:0.1):0.05,(OTU3:0.2,OTU4:0.1):0.05);"
-    tree_node = skbio.tree.TreeNode.read(
-        StringIO(newick), format="newick", convert_underscores=False
-    )
-    otu = OtuTable(
-        pd.DataFrame(
-            [[10, 5], [0, 20], [8, 3], [15, 1]],
-            index=["OTU1", "OTU2", "OTU3", "OTU4"],
-            columns=["S1", "S2"],
-            dtype=float,
-        ),
-        taxa_are_rows=True,
-    )
-    return Phyloseq(otu=otu, tree=PhyTree(tree_node))
-
-
-def _make_ps_with_refseq() -> Phyloseq:
-    df = pd.DataFrame(
-        {"S1": [10.0, 5.0, 0.0], "S2": [3.0, 8.0, 2.0]},
-        index=["OTU1", "OTU2", "OTU3"],
-    )
-    rs = RefSeq(
-        {
-            "OTU1": skbio.DNA("ACGT"),
-            "OTU2": skbio.DNA("TTTT"),
-            "OTU3": skbio.DNA("GCGC"),
-        }
-    )
-    return Phyloseq(otu=OtuTable(df, taxa_are_rows=True), refseq=rs)
+_GOLDEN = Path(__file__).parent / "golden"
 
 
 @pytest.fixture
-def ps() -> Phyloseq:
+def ps_combine() -> Phyloseq:
     return _make_ps()
 
 
@@ -126,20 +39,20 @@ def ps() -> Phyloseq:
 # ===========================================================================
 
 
-def test_tax_glom_collapses_taxa(ps: Phyloseq) -> None:
-    ps2 = tax_glom(ps, "Phylum")
+def test_tax_glom_collapses_taxa(ps_combine: Phyloseq) -> None:
+    ps2 = tax_glom(ps_combine, "Phylum")
     assert ps2.ntaxa == 4
 
 
-def test_tax_glom_sums_abundances(ps: Phyloseq) -> None:
-    ps2 = tax_glom(ps, "Phylum")
-    orig_total = ps.taxa_sums().sum()
+def test_tax_glom_sums_abundances(ps_combine: Phyloseq) -> None:
+    ps2 = tax_glom(ps_combine, "Phylum")
+    orig_total = ps_combine.taxa_sums().sum()
     assert abs(ps2.taxa_sums().sum() - orig_total) < 1e-10
 
 
-def test_tax_glom_at_genus_gives_more_groups(ps: Phyloseq) -> None:
-    ps_phylum = tax_glom(ps, "Phylum")
-    ps_genus = tax_glom(ps, "Genus")
+def test_tax_glom_at_genus_gives_more_groups(ps_combine: Phyloseq) -> None:
+    ps_phylum = tax_glom(ps_combine, "Phylum")
+    ps_genus = tax_glom(ps_combine, "Genus")
     assert ps_genus.ntaxa >= ps_phylum.ntaxa
 
 
@@ -149,26 +62,26 @@ def test_tax_glom_no_tax_raises() -> None:
         tax_glom(ps, "Phylum")
 
 
-def test_tax_glom_bad_rank_raises(ps: Phyloseq) -> None:
+def test_tax_glom_bad_rank_raises(ps_combine: Phyloseq) -> None:
     with pytest.raises(pyloseq.pyloseqValidationError):
-        tax_glom(ps, "Species")
+        tax_glom(ps_combine, "Species")
 
 
-def test_tax_glom_preserves_sample_data(ps: Phyloseq) -> None:
-    ps2 = tax_glom(ps, "Phylum")
+def test_tax_glom_preserves_sample_data(ps_combine: Phyloseq) -> None:
+    ps2 = tax_glom(ps_combine, "Phylum")
     assert ps2.sample_data is not None
-    assert ps2.nsamples == ps.nsamples
+    assert ps2.nsamples == ps_combine.nsamples
 
 
-def test_tax_glom_na_rm(ps: Phyloseq) -> None:
-    tax_df = ps.tax_table.to_frame().copy()
+def test_tax_glom_na_rm(ps_combine: Phyloseq) -> None:
+    tax_df = ps_combine.tax_table.to_frame().copy()
     tax_df.loc["OTU1", "Phylum"] = ""
     ps2 = Phyloseq(
-        otu=ps.otu_table.copy(),
+        otu=ps_combine.otu_table.copy(),
         tax=TaxTable(tax_df),
     )
     ps3 = tax_glom(ps2, "Phylum", na_rm=True)
-    assert ps3.ntaxa < ps.ntaxa
+    assert ps3.ntaxa < ps_combine.ntaxa
 
 
 def test_tax_glom_preserves_refseq() -> None:
@@ -183,7 +96,7 @@ def test_tax_glom_preserves_refseq() -> None:
     assert len(ps2.refseq) == 1
 
 
-@pytest.mark.skipif(not GP_TAXGLOM_PRESENT, reason="golden files not generated yet")
+@requires_golden("GlobalPatterns", "tax_glom_Family", "taxa_sums.parquet")
 def test_tax_glom_family_matches_r() -> None:
     ref = load_global_patterns_reference()
     gp = Phyloseq(
@@ -192,7 +105,7 @@ def test_tax_glom_family_matches_r() -> None:
     )
     gp_fam = tax_glom(gp, "Family")
 
-    golden_ts = pd.read_parquet(GP_GOLDEN / "tax_glom_Family" / "taxa_sums.parquet")
+    golden_ts = pd.read_parquet(_GOLDEN / "GlobalPatterns" / "tax_glom_Family" / "taxa_sums.parquet")
     if "__index__" in golden_ts.columns:
         golden_ts = golden_ts.set_index("__index__")
         golden_ts.index.name = None
@@ -216,9 +129,9 @@ def test_tip_glom_reduces_taxa() -> None:
     assert ps2.ntaxa <= ps.ntaxa
 
 
-def test_tip_glom_no_tree_raises(ps: Phyloseq) -> None:
+def test_tip_glom_no_tree_raises(ps_combine: Phyloseq) -> None:
     with pytest.raises(pyloseq.pyloseqValidationError):
-        tip_glom(ps, h=0.1)
+        tip_glom(ps_combine, h=0.1)
 
 
 def test_tip_glom_large_h_merges_all() -> None:
@@ -267,14 +180,14 @@ def test_tip_glom_hcfun_complete_abundance_conserved() -> None:
 # ===========================================================================
 
 
-def test_merge_taxa_reduces_ntaxa(ps: Phyloseq) -> None:
-    ps2 = merge_taxa(ps, ["OTU1", "OTU2"])
-    assert ps2.ntaxa == ps.ntaxa - 1
+def test_merge_taxa_reduces_ntaxa(ps_combine: Phyloseq) -> None:
+    ps2 = merge_taxa(ps_combine, ["OTU1", "OTU2"])
+    assert ps2.ntaxa == ps_combine.ntaxa - 1
 
 
-def test_merge_taxa_sums_abundances(ps: Phyloseq) -> None:
-    orig = ps.otu_table.to_dataframe()
-    ps2 = merge_taxa(ps, ["OTU1", "OTU2"])
+def test_merge_taxa_sums_abundances(ps_combine: Phyloseq) -> None:
+    orig = ps_combine.otu_table.to_dataframe()
+    ps2 = merge_taxa(ps_combine, ["OTU1", "OTU2"])
     result = ps2.otu_table.to_dataframe()
     archetype = (result.index.intersection(pd.Index(["OTU1", "OTU2"])))[0]
     np.testing.assert_allclose(
@@ -284,20 +197,20 @@ def test_merge_taxa_sums_abundances(ps: Phyloseq) -> None:
     )
 
 
-def test_merge_taxa_explicit_archetype(ps: Phyloseq) -> None:
-    ps2 = merge_taxa(ps, ["OTU1", "OTU2", "OTU3"], archetype="OTU2")
+def test_merge_taxa_explicit_archetype(ps_combine: Phyloseq) -> None:
+    ps2 = merge_taxa(ps_combine, ["OTU1", "OTU2", "OTU3"], archetype="OTU2")
     assert "OTU2" in list(ps2.taxa_names)
     assert "OTU1" not in list(ps2.taxa_names)
 
 
-def test_merge_taxa_single_taxon_noop(ps: Phyloseq) -> None:
-    ps2 = merge_taxa(ps, ["OTU1"])
-    assert ps2.ntaxa == ps.ntaxa
+def test_merge_taxa_single_taxon_noop(ps_combine: Phyloseq) -> None:
+    ps2 = merge_taxa(ps_combine, ["OTU1"])
+    assert ps2.ntaxa == ps_combine.ntaxa
 
 
-def test_merge_taxa_total_abundance_preserved(ps: Phyloseq) -> None:
-    orig_total = ps.taxa_sums().sum()
-    ps2 = merge_taxa(ps, ["OTU1", "OTU2", "OTU3"])
+def test_merge_taxa_total_abundance_preserved(ps_combine: Phyloseq) -> None:
+    orig_total = ps_combine.taxa_sums().sum()
+    ps2 = merge_taxa(ps_combine, ["OTU1", "OTU2", "OTU3"])
     assert abs(ps2.taxa_sums().sum() - orig_total) < 1e-10
 
 
@@ -346,9 +259,9 @@ def test_merge_phyloseq_union_taxa() -> None:
     assert merged.nsamples == 2
 
 
-def test_merge_phyloseq_requires_two_or_more(ps: Phyloseq) -> None:
+def test_merge_phyloseq_requires_two_or_more(ps_combine: Phyloseq) -> None:
     with pytest.raises(ValueError):
-        merge_phyloseq(ps)
+        merge_phyloseq(ps_combine)
 
 
 def test_merge_phyloseq_three_objects_sample_count() -> None:
@@ -380,14 +293,14 @@ def test_merge_phyloseq_three_objects_abundance_sum() -> None:
 # ===========================================================================
 
 
-def test_merge_samples_collapses_to_groups(ps: Phyloseq) -> None:
-    ps2 = merge_samples(ps, "Group")
+def test_merge_samples_collapses_to_groups(ps_combine: Phyloseq) -> None:
+    ps2 = merge_samples(ps_combine, "Group")
     assert ps2.nsamples == 2
 
 
-def test_merge_samples_sums_otu_abundances(ps: Phyloseq) -> None:
-    orig = ps.otu_table.to_dataframe()
-    ps2 = merge_samples(ps, "Group")
+def test_merge_samples_sums_otu_abundances(ps_combine: Phyloseq) -> None:
+    orig = ps_combine.otu_table.to_dataframe()
+    ps2 = merge_samples(ps_combine, "Group")
     result = ps2.otu_table.to_dataframe()
     for grp, samples in [("A", ["S1", "S2"]), ("B", ["S3", "S4"])]:
         if grp in result.columns:
@@ -404,14 +317,14 @@ def test_merge_samples_no_sample_data_raises() -> None:
         merge_samples(ps, "Group")
 
 
-def test_merge_samples_bad_variable_raises(ps: Phyloseq) -> None:
+def test_merge_samples_bad_variable_raises(ps_combine: Phyloseq) -> None:
     with pytest.raises(pyloseq.pyloseqValidationError):
-        merge_samples(ps, "NoSuchColumn")
+        merge_samples(ps_combine, "NoSuchColumn")
 
 
-def test_merge_samples_custom_fn_sums_instead_of_mean(ps: Phyloseq) -> None:
-    orig = ps.otu_table.to_dataframe()
-    ps2 = merge_samples(ps, "Group", fn=np.sum)
+def test_merge_samples_custom_fn_sums_instead_of_mean(ps_combine: Phyloseq) -> None:
+    orig = ps_combine.otu_table.to_dataframe()
+    ps2 = merge_samples(ps_combine, "Group", fn=np.sum)
     result = ps2.otu_table.to_dataframe()
     for grp, samples in [("A", ["S1", "S2"]), ("B", ["S3", "S4"])]:
         if grp in result.columns:
@@ -433,7 +346,7 @@ def test_merge_samples_preserves_refseq() -> None:
     assert ps2.refseq is not None
 
 
-@pytest.mark.skipif(not GP_MERGESAM_PRESENT, reason="golden files not generated yet")
+@requires_golden("GlobalPatterns", "merge_samples_SampleType", "sample_sums.parquet")
 def test_merge_samples_sampletype_matches_r() -> None:
     ref = load_global_patterns_reference()
     gp = Phyloseq(
@@ -443,7 +356,7 @@ def test_merge_samples_sampletype_matches_r() -> None:
     gp2 = merge_samples(gp, "SampleType")
 
     golden_ss = pd.read_parquet(
-        GP_GOLDEN / "merge_samples_SampleType" / "sample_sums.parquet"
+        _GOLDEN / "GlobalPatterns" / "merge_samples_SampleType" / "sample_sums.parquet"
     )
     if "__index__" in golden_ss.columns:
         golden_ss = golden_ss.set_index("__index__")
@@ -462,41 +375,41 @@ def test_merge_samples_sampletype_matches_r() -> None:
 # ===========================================================================
 
 
-def test_psmelt_shape(ps: Phyloseq) -> None:
-    long = psmelt(ps)
-    assert len(long) == ps.ntaxa * ps.nsamples
+def test_psmelt_shape(ps_combine: Phyloseq) -> None:
+    long = psmelt(ps_combine)
+    assert len(long) == ps_combine.ntaxa * ps_combine.nsamples
 
 
-def test_psmelt_required_columns(ps: Phyloseq) -> None:
-    long = psmelt(ps)
+def test_psmelt_required_columns(ps_combine: Phyloseq) -> None:
+    long = psmelt(ps_combine)
     assert "OTU" in long.columns
     assert "Sample" in long.columns
     assert "Abundance" in long.columns
 
 
-def test_psmelt_sample_variables_present(ps: Phyloseq) -> None:
-    long = psmelt(ps)
-    for v in ps.sample_variables:
+def test_psmelt_sample_variables_present(ps_combine: Phyloseq) -> None:
+    long = psmelt(ps_combine)
+    for v in ps_combine.sample_variables:
         assert v in long.columns
 
 
-def test_psmelt_rank_names_present(ps: Phyloseq) -> None:
-    long = psmelt(ps)
-    for r in ps.rank_names:
+def test_psmelt_rank_names_present(ps_combine: Phyloseq) -> None:
+    long = psmelt(ps_combine)
+    for r in ps_combine.rank_names:
         assert r in long.columns
 
 
-def test_psmelt_abundance_sum(ps: Phyloseq) -> None:
-    long = psmelt(ps)
+def test_psmelt_abundance_sum(ps_combine: Phyloseq) -> None:
+    long = psmelt(ps_combine)
     np.testing.assert_allclose(
         long["Abundance"].sum(),
-        ps.otu_table.to_dataframe().values.sum(),
+        ps_combine.otu_table.to_dataframe().values.sum(),
         atol=1e-10,
     )
 
 
-def test_psmelt_melt_method_alias(ps: Phyloseq) -> None:
-    assert ps.melt().equals(psmelt(ps))
+def test_psmelt_melt_method_alias(ps_combine: Phyloseq) -> None:
+    assert ps_combine.melt().equals(psmelt(ps_combine))
 
 
 def test_psmelt_no_sample_data() -> None:

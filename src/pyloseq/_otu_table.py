@@ -122,7 +122,7 @@ class OtuTable:
             return self._df.values
         if self._sparse is None:
             raise RuntimeError("OtuTable has neither dense nor sparse data")
-        return np.asarray(self._sparse.toarray())
+        return cast(np.ndarray, np.asarray(self._sparse.toarray()))
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return the abundance matrix as a ``pd.DataFrame`` in current orientation.
@@ -132,7 +132,7 @@ class OtuTable:
         R reference: as(otu_table(x), "matrix") then as.data.frame()
         """
         if self._df is not None:
-            return cast(pd.DataFrame, self._df.copy())
+            return self._df.copy()
         if self._sparse is None:
             raise RuntimeError("OtuTable has neither dense nor sparse data")
         return pd.DataFrame(
@@ -243,9 +243,9 @@ class OtuTable:
         """
         if self._sparse is not None:
             # scipy returns a np.matrix; ravel to a 1-D ndarray.
-            return np.asarray(self._sparse.sum(axis=axis)).ravel()
+            return cast(np.ndarray, np.asarray(self._sparse.sum(axis=axis)).ravel())
         if self._df is not None:
-            return np.asarray(self._df.values.sum(axis=axis))
+            return cast(np.ndarray, np.asarray(self._df.values.sum(axis=axis)))
         raise RuntimeError("OtuTable has neither dense nor sparse data")
 
     def taxa_sums(self) -> pd.Series:

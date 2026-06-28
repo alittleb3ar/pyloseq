@@ -282,9 +282,9 @@ def _rescale_biplot_scores(
     """
     if feature_xy.size == 0 or sample_xy.size == 0:
         return feature_xy
-    samp_span = np.nanmax(np.abs(sample_xy)) or 1.0
-    feat_span = np.nanmax(np.abs(feature_xy)) or 1.0
-    return feature_xy * (samp_span / feat_span)
+    samp_span: float = np.nanmax(np.abs(sample_xy)) or 1.0
+    feat_span: float = np.nanmax(np.abs(feature_xy)) or 1.0
+    return cast(np.ndarray, feature_xy * (samp_span / feat_span))
 
 
 def plot_ordination(
@@ -479,6 +479,7 @@ def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
         try:
             hull = ConvexHull(pts)
             # vertices are already in CCW order; close the polygon
+            idx: int
             for idx in np.append(hull.vertices, hull.vertices[0]):
                 rows.append(
                     {"Axis.1": pts[idx, 0], "Axis.2": pts[idx, 1], group_col: group}
@@ -540,7 +541,7 @@ def _split_df(ps: Phyloseq, ord: Any) -> pd.DataFrame:
             feat_df = feat_df.join(ps.tax_table.to_frame(), how="left")
         frames.append(feat_df)
 
-    return cast(pd.DataFrame, pd.concat(frames).reset_index())
+    return pd.concat(frames).reset_index()
 
 
 def _plot_split(
@@ -700,13 +701,15 @@ def plot_heatmap(
                 stacklevel=2,
             )
         else:
-            labels_dict = (
-                long_df[["Sample", label]]
+            labels_dict: dict[str, str] = {
+                str(k): v
+                for k, v in long_df[["Sample", label]]
                 .drop_duplicates()
                 .set_index("Sample")[label]
                 .astype(str)
                 .to_dict()
-            )
+                .items()
+            }
             p = p + scale_x_discrete(labels=labels_dict)
 
     if taxa_label is not None:
@@ -717,13 +720,15 @@ def plot_heatmap(
                 stacklevel=2,
             )
         else:
-            taxa_labels_dict = (
-                long_df[["OTU", taxa_label]]
+            taxa_labels_dict: dict[str, str] = {
+                str(k): v
+                for k, v in long_df[["OTU", taxa_label]]
                 .drop_duplicates("OTU")
                 .set_index("OTU")[taxa_label]
                 .astype(str)
                 .to_dict()
-            )
+                .items()
+            }
             p = p + scale_y_discrete(labels=taxa_labels_dict)
 
     if title:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 import pandas as pd
 
 from pyloseq._validation import require_unique
@@ -52,7 +50,7 @@ class SampleData:
 
         R reference: as(sample_data(x), "data.frame")
         """
-        return cast(pd.DataFrame, self._df.copy())
+        return self._df.copy()
 
     def copy(self) -> SampleData:
         """Return a deep copy of this SampleData."""

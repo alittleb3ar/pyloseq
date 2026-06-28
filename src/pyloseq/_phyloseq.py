@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -207,7 +207,7 @@ class Phyloseq:
         """
         df = self._otu.to_dataframe()
         if self._otu.taxa_are_rows:
-            return df.loc[i]
+            return cast(pd.Series, df.loc[i])
         return df[i]
 
     def get_sample(self, i: str) -> pd.Series:
@@ -218,7 +218,7 @@ class Phyloseq:
         df = self._otu.to_dataframe()
         if self._otu.taxa_are_rows:
             return df[i]
-        return df.loc[i]
+        return cast(pd.Series, df.loc[i])
 
     def taxa_sums(self) -> pd.Series:
         """Sum of abundances across all samples for each taxon.

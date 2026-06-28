@@ -7,14 +7,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import requires_golden
 
 import pyloseq
 from pyloseq import OtuTable, Phyloseq, estimate_richness
 from pyloseq.datasets.fixtures import load_global_patterns_reference
 
-GOLDEN_DIR = Path("tests/golden")
-GP_GOLDEN = GOLDEN_DIR / "GlobalPatterns"
-RICH_PRESENT = (GP_GOLDEN / "estimate_richness" / "default.parquet").exists()
+_GOLDEN = Path(__file__).parent / "golden"
 
 
 # ===========================================================================
@@ -96,14 +95,14 @@ def test_bad_measure_raises(ps: Phyloseq) -> None:
         estimate_richness(ps, measures=["NotAMeasure"])
 
 
-@pytest.mark.skipif(not RICH_PRESENT, reason="golden files not generated yet")
+@requires_golden("GlobalPatterns", "estimate_richness", "default.parquet")
 def test_estimate_richness_matches_r_globalpatterns() -> None:
 
     ref = load_global_patterns_reference()
     gp = Phyloseq(otu=OtuTable(ref["otu_table"], taxa_are_rows=True))
     result = estimate_richness(gp)
 
-    golden = pd.read_parquet(GP_GOLDEN / "estimate_richness" / "default.parquet")
+    golden = pd.read_parquet(_GOLDEN / "GlobalPatterns" / "estimate_richness" / "default.parquet")
     if "__index__" in golden.columns:
         golden = golden.set_index("__index__")
         golden.index.name = None

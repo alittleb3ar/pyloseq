@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 import pandas as pd
 
 
@@ -47,7 +45,7 @@ class TaxTable:
 
         R reference: as(tax_table(x), "matrix")
         """
-        return cast(pd.DataFrame, self._df.copy())
+        return self._df.copy()
 
     def copy(self) -> TaxTable:
         """Return a deep copy of this TaxTable."""
