@@ -10,7 +10,11 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "Michael Donovan", email = "m.p.donovan1014@gmail.com" }]
-keywords = ["microbiome", "metagenomics", "bioinformatics", "phyloseq", "16S"]
+keywords = [
+    "microbiome", "metagenomics", "bioinformatics", "phyloseq", "16S rRNA",
+    "amplicon sequencing", "OTU", "ASV", "alpha diversity", "beta diversity",
+    "UniFrac", "BIOM", "QIIME2", "ordination", "NMDS", "PCoA",
+]
 classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
@@ -19,7 +23,18 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
 ]
+[project.urls]
+Homepage = "https://alittleb3ar.github.io/pyloseq/"
+Documentation = "https://alittleb3ar.github.io/pyloseq/"
+Repository = "https://github.com/alittleb3ar/pyloseq"
+"Bug Tracker" = "https://github.com/alittleb3ar/pyloseq/issues"
+Changelog = "https://github.com/alittleb3ar/pyloseq/blob/main/CHANGELOG.md"
+
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",

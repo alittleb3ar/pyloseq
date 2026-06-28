@@ -1,5 +1,11 @@
 # pyloseq
 
+[![PyPI version](https://img.shields.io/pypi/v/pyloseq)](https://pypi.org/project/pyloseq/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pyloseq)](https://pypi.org/project/pyloseq/)
+[![License](https://img.shields.io/pypi/l/pyloseq)](LICENSE)
+[![Tests](https://github.com/alittleb3ar/pyloseq/actions/workflows/tests.yml/badge.svg)](https://github.com/alittleb3ar/pyloseq/actions/workflows/tests.yml)
+[![Docs](https://github.com/alittleb3ar/pyloseq/actions/workflows/docs.yml/badge.svg)](https://alittleb3ar.github.io/pyloseq/)
+
 **[Documentation →](https://alittleb3ar.github.io/pyloseq/)**
 
 A Python port of the R/Bioconductor [phyloseq](https://joey711.github.io/phyloseq/) package, built on the PyData stack. pyloseq represents microbiome data as a single object that bundles an OTU/feature table with sample metadata, taxonomic annotations, a phylogenetic tree, and reference sequences. All analysis functions operate on that object directly.

@@ -1,6 +1,7 @@
 site_name: pyloseq
 site_description: Python port of R/Bioconductor phyloseq — PyData-native microbiome analysis
 site_author: Michael Donovan
+site_url: https://alittleb3ar.github.io/pyloseq/
 repo_url: https://github.com/alittleb3ar/pyloseq
 docs_dir: docs
 
@@ -41,6 +42,13 @@ plugins:
             show_signature_annotations: true
             separate_signature: true
             docstring_style: numpy
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alittleb3ar/pyloseq
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pyloseq/
 
 markdown_extensions:
   - admonition
