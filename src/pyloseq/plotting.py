@@ -443,14 +443,7 @@ def plot_ordination(
     # Convex hull shading per group (opt-in; samples kind only since biplot
     # mixes taxa rows into the frame).
     if show_hull and color and color in plot_df.columns and kind == "samples":
-        hull_data = _convex_hull_df(plot_df.dropna(subset=[color]), color)
-        if not hull_data.empty:
-            p = p + geom_polygon(
-                data=hull_data,
-                mapping=aes(x="Axis.1", y="Axis.2", fill=color, group=color),
-                alpha=0.1,
-                color=None,
-            )
+        p = _add_hull_layer(p, plot_df, color)
 
     p = p + geom_point(size=3)
 
@@ -487,6 +480,46 @@ def _convex_hull_df(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
         except QhullError:
             continue
     return pd.DataFrame(rows)
+
+
+def _add_hull_layer(
+    p: Any,
+    df: pd.DataFrame,
+    color_col: str,
+    panel_col: str | None = None,
+    panel_val: str | None = None,
+) -> Any:
+    """Append a convex hull ``geom_polygon`` layer to *p* if the data allow it.
+
+    Parameters
+    ----------
+    p:
+        A ``plotnine.ggplot`` object to augment.
+    df:
+        DataFrame containing at least ``Axis.1``, ``Axis.2``, and *color_col*.
+    color_col:
+        Column used for group colouring.
+    panel_col:
+        Optional facet column; when provided only rows where ``panel_col ==
+        panel_val`` are passed to hull computation, and the column is set on
+        the hull data so ``facet_wrap`` places it correctly.
+    panel_val:
+        Required when *panel_col* is given.
+    """
+    sub = df.dropna(subset=[color_col])
+    if panel_col is not None and panel_val is not None:
+        sub = sub[sub[panel_col] == panel_val]
+    hull_data = _convex_hull_df(sub, color_col)
+    if hull_data.empty:
+        return p
+    if panel_col is not None and panel_val is not None:
+        hull_data[panel_col] = panel_val
+    return p + geom_polygon(
+        data=hull_data,
+        mapping=aes(x="Axis.1", y="Axis.2", fill=color_col, group=color_col),
+        alpha=0.1,
+        color=None,
+    )
 
 
 def _plot_scree(ord: Any, title: str | None = None) -> Any:
@@ -565,16 +598,7 @@ def _plot_split(
 
     # Convex hull shading on the Samples panel only (opt-in).
     if show_hull and color and color in combined.columns:
-        sam_only = combined[combined["_panel"] == "Samples"].dropna(subset=[color])
-        hull_data = _convex_hull_df(sam_only, color)
-        if not hull_data.empty:
-            hull_data["_panel"] = "Samples"
-            p = p + geom_polygon(
-                data=hull_data,
-                mapping=aes(x="Axis.1", y="Axis.2", fill=color, group=color),
-                alpha=0.1,
-                color=None,
-            )
+        p = _add_hull_layer(p, combined, color, panel_col="_panel", panel_val="Samples")
 
     p = p + geom_point(size=3) + facet_wrap("~_panel")
 

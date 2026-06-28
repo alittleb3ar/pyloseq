@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -14,10 +15,9 @@ from skbio.stats.ordination import OrdinationResults
 
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_samples_rows
+from pyloseq._utils import _filter_otu_to_tree, _row_normalize
 
 if TYPE_CHECKING:
-    from skbio.stats.distance import DistanceMatrix
-
     from pyloseq._phyloseq import Phyloseq
 
 # Threshold for treating near-zero eigenvalues as positive in DPCoA
@@ -167,18 +167,8 @@ def unifrac(
         raise pyloseqValidationError("unifrac requires phy_tree")
 
     tree_node = ps.phy_tree._tree
-    tree_tips = set(ps.phy_tree.tip_names)
 
-    otu_df = _otu_samples_rows(ps)
-
-    # Restrict to taxa present in the tree
-    taxa_in_tree = [t for t in otu_df.columns if t in tree_tips]
-    if not taxa_in_tree:
-        raise pyloseqValidationError(
-            "No taxa names match tree tip labels. "
-            "Check that taxa_names and tree tip names are consistent."
-        )
-    otu_df = otu_df[taxa_in_tree]
+    otu_df = _filter_otu_to_tree(_otu_samples_rows(ps), ps.phy_tree)
 
     counts: np.ndarray = otu_df.values.astype(int)
     sample_ids = list(otu_df.index)
@@ -202,10 +192,64 @@ def unifrac(
 # ---------------------------------------------------------------------------
 
 
+@dataclasses.dataclass(frozen=True)
+class GUnifracResult:
+    """Structured return value of :func:`gunifrac`.
+
+    All distance matrices are accessible by attribute or by key (for backwards
+    compatibility with code that treated the return value as a plain ``dict``).
+
+    Attributes
+    ----------
+    d_UW:
+        Unweighted UniFrac as defined by the R ``GUniFrac`` package.
+    d_VAW:
+        Variance-adjusted weighted UniFrac (Hamady et al. 2010).
+    alpha_matrices:
+        Dict keyed ``"d_{a}"`` for each alpha value requested (e.g.
+        ``"d_0"``, ``"d_0.5"``, ``"d_1"``).
+
+    Notes
+    -----
+    The ``__getitem__``, ``keys``, ``values``, and ``items`` methods mirror the
+    ``dict`` interface so that existing code using subscript access or iteration
+    over the return value continues to work unchanged.  Code that called
+    ``isinstance(result, dict)`` or ``result.get(...)`` must be updated.
+    """
+
+    d_UW: DistanceMatrix
+    d_VAW: DistanceMatrix
+    alpha_matrices: dict[str, DistanceMatrix]
+
+    def __getitem__(self, key: str) -> DistanceMatrix:
+        """Return the distance matrix for *key* (e.g. ``"d_0.5"``, ``"d_UW"``)."""
+        if key == "d_UW":
+            return self.d_UW
+        if key == "d_VAW":
+            return self.d_VAW
+        return self.alpha_matrices[key]
+
+    def keys(self) -> list[str]:
+        """Return all available distance matrix keys."""
+        return list(self.alpha_matrices) + ["d_UW", "d_VAW"]
+
+    def values(self) -> list[DistanceMatrix]:
+        """Return all distance matrices in key order."""
+        return list(self.alpha_matrices.values()) + [self.d_UW, self.d_VAW]
+
+    def items(self) -> list[tuple[str, DistanceMatrix]]:
+        """Return ``(key, matrix)`` pairs in key order."""
+        return list(self.alpha_matrices.items()) + [("d_UW", self.d_UW), ("d_VAW", self.d_VAW)]
+
+    def __contains__(self, key: object) -> bool:
+        """Return ``True`` if *key* is a valid distance matrix key."""
+        return key in self.alpha_matrices or key in ("d_UW", "d_VAW")
+
+
 def gunifrac(
     ps: Phyloseq,
     alpha: tuple[float, ...] = (0, 0.5, 1),
-) -> dict[str, DistanceMatrix]:
+) -> GUnifracResult:
     """Compute Generalized UniFrac distance matrices.
 
     Implements the GUniFrac family from Chen et al. (2012) *Bioinformatics*
@@ -225,13 +269,11 @@ def gunifrac(
 
     Returns
     -------
-    dict mapping:
-
-    - ``"d_{a}"`` for each ``a`` in *alpha* — GUniFrac at that exponent.
-        ``d_0`` equals ``d_UW``; ``d_1`` equals normalized weighted UniFrac.
-    - ``"d_UW"``  — unweighted UniFrac as defined in R's GUniFrac package
-        (fraction of branches where cumulative proportions differ; see note below)
-    - ``"d_VAW"`` — variance-adjusted weighted UniFrac (Hamady et al. 2010)
+    GUnifracResult
+        Structured result with attributes ``d_UW``, ``d_VAW``, and
+        ``alpha_matrices`` (keyed ``"d_{a}"`` for each requested alpha).
+        Supports ``result["d_0.5"]``, ``result.keys()``, ``result.values()``,
+        and ``result.items()`` for backwards compatibility.
 
     .. note::
         ``d_UW`` from this function matches R's ``GUniFrac`` package definition,
@@ -244,20 +286,9 @@ def gunifrac(
         raise pyloseqValidationError("gunifrac requires phy_tree")
 
     tree = ps.phy_tree._tree
-    tree_tips = {n.name for n in tree.tips()}
 
-    otu_df = _otu_samples_rows(ps)
-    taxa_in_tree = [t for t in otu_df.columns if t in tree_tips]
-    if not taxa_in_tree:
-        raise pyloseqValidationError(
-            "No taxa names match tree tip labels. "
-            "Check that taxa_names and tree tip names are consistent."
-        )
-    otu_df = otu_df[taxa_in_tree]
-
-    row_sums = otu_df.sum(axis=1)
-    row_sums[row_sums == 0] = 1.0
-    prop_df = otu_df.div(row_sums, axis=0)
+    otu_df = _filter_otu_to_tree(_otu_samples_rows(ps), ps.phy_tree)
+    prop_df = _row_normalize(otu_df)
 
     sample_ids = list(prop_df.index)
     n = len(sample_ids)
@@ -355,7 +386,11 @@ def gunifrac(
             dm_vaw[i, j] = dm_vaw[j, i] = np.sqrt(num / den) if den > 0 else 0.0
     results["d_VAW"] = _make_dm(dm_vaw)
 
-    return results
+    return GUnifracResult(
+        d_UW=results["d_UW"],
+        d_VAW=results["d_VAW"],
+        alpha_matrices={k: v for k, v in results.items() if k not in ("d_UW", "d_VAW")},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +511,25 @@ def _dpcoa_manual(freq_table: pd.DataFrame, dm_species: Any) -> Any:
     )
 
 
+def _prepare_dpcoa(ps: Phyloseq) -> tuple[pd.DataFrame, Any]:
+    """Shared preprocessing for DPCoA: compute species distances, intersect taxa, normalize.
+
+    Parameters
+    ----------
+    ps:
+        ``Phyloseq`` object; caller must confirm ``ps.phy_tree`` is not ``None``.
+
+    Returns
+    -------
+    tuple of (freq_table, dm_species) ready to pass to :func:`_dpcoa_manual`.
+    """
+    tree_node = ps.phy_tree._tree  # type: ignore[union-attr]
+    dm_species = tree_node.tip_tip_distances()
+    otu_df = _otu_samples_rows(ps)
+    common = [t for t in dm_species.ids if t in otu_df.columns]
+    return _row_normalize(otu_df[common]), dm_species
+
+
 def _dpcoa_distance(ps: Phyloseq) -> Any:
     """Compute sample distances via Double PCoA on patristic distances.
 
@@ -487,18 +541,7 @@ def _dpcoa_distance(ps: Phyloseq) -> Any:
     if ps.phy_tree is None:
         raise pyloseqValidationError("dpcoa requires phy_tree")
 
-    tree_node = ps.phy_tree._tree
-    dm_species = tree_node.tip_tip_distances()
-
-    otu_df = _otu_samples_rows(ps)
-
-    common = [t for t in dm_species.ids if t in otu_df.columns]
-    otu_df = otu_df[common]
-
-    row_sums = otu_df.sum(axis=1)
-    row_sums[row_sums == 0] = 1.0
-    freq_table = otu_df.div(row_sums, axis=0)
-
+    freq_table, dm_species = _prepare_dpcoa(ps)
     result = _dpcoa_manual(freq_table, dm_species)
 
     from scipy.spatial.distance import pdist, squareform  # noqa: PLC0415

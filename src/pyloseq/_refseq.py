@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -50,7 +51,16 @@ class RefSeq:
     # ``taxa_names`` so the component is self-describing outside the container.
     @property
     def names(self) -> pd.Index:
-        """Deprecated alias for :attr:`taxa_names`."""
+        """Deprecated alias for :attr:`taxa_names`. Use ``taxa_names`` instead.
+
+        .. deprecated::
+            Use :attr:`taxa_names`.
+        """
+        warnings.warn(
+            "RefSeq.names is deprecated; use .taxa_names instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.taxa_names
 
     def copy(self) -> RefSeq:

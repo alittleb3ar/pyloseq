@@ -2,7 +2,7 @@ from importlib.metadata import version
 
 __version__ = version("pyloseq")
 
-from pyloseq._distances import distance, distance_method_list, gunifrac, unifrac
+from pyloseq._distances import GUnifracResult, distance, distance_method_list, gunifrac, unifrac
 from pyloseq._diversity import estimate_richness
 from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._hypothesis import multi_tax_test
@@ -54,6 +54,7 @@ from pyloseq.plotting import (
 
 __all__ = [
     "__version__",
+    "GUnifracResult",
     "OtuTable",
     "Phyloseq",
     "PhyTree",

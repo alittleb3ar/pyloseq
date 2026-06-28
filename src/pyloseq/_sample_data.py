@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 
 from pyloseq._validation import require_unique
@@ -34,7 +36,16 @@ class SampleData:
     # ``sample_names`` so the component is self-describing outside the container.
     @property
     def names(self) -> pd.Index:
-        """Deprecated alias for :attr:`sample_names`."""
+        """Deprecated alias for :attr:`sample_names`. Use ``sample_names`` instead.
+
+        .. deprecated::
+            Use :attr:`sample_names`.
+        """
+        warnings.warn(
+            "SampleData.names is deprecated; use .sample_names instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.sample_names
 
     @property

@@ -1,6 +1,8 @@
+import warnings
 from pathlib import Path
 
 import skbio
+import pytest
 
 from pyloseq import RefSeq
 
@@ -14,7 +16,7 @@ def test_from_fasta_round_trip(tmp_path: Path) -> None:
     fasta = tmp_path / "seqs.fasta"
     rs.to_fasta(fasta)
     rs2 = RefSeq.from_fasta(fasta)
-    assert set(rs2.names) == {"OTU1", "OTU2"}
+    assert set(rs2.taxa_names) == {"OTU1", "OTU2"}
     assert str(rs2["OTU1"]) == "ACGT"
     assert str(rs2["OTU2"]) == "TTTT"
 
@@ -23,7 +25,7 @@ def test_copy_is_independent() -> None:
     rs = RefSeq({"OTU1": skbio.DNA("ACGT")})
     rs2 = rs.copy()
     rs._seqs["OTU2"] = skbio.DNA("TTTT")
-    assert "OTU2" not in rs2.names
+    assert "OTU2" not in rs2.taxa_names
 
 
 def test_len() -> None:
@@ -45,6 +47,12 @@ def test_getitem() -> None:
 def test_taxa_names_property() -> None:
     rs = RefSeq({"OTU1": skbio.DNA("ACGT"), "OTU2": skbio.DNA("TTTT")})
     assert set(rs.taxa_names) == {"OTU1", "OTU2"}
+
+
+def test_names_deprecated() -> None:
+    rs = RefSeq({"OTU1": skbio.DNA("ACGT")})
+    with pytest.warns(DeprecationWarning, match="taxa_names"):
+        _ = rs.names
 
 
 def test_eq_same_sequences() -> None:

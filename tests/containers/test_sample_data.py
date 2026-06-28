@@ -12,10 +12,12 @@ def test_basic_construction() -> None:
     assert list(sd.variables) == ["age", "site"]
 
 
-def test_names() -> None:
+def test_names_deprecated() -> None:
     df = pd.DataFrame({"x": [1]}, index=["MySample"])
     sd = SampleData(df)
-    assert list(sd.names) == ["MySample"]
+    with pytest.warns(DeprecationWarning, match="sample_names"):
+        result = sd.names
+    assert list(result) == ["MySample"]
 
 
 def test_to_frame_is_copy() -> None:
