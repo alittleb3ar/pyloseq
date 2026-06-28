@@ -287,15 +287,15 @@ def test_constant_taxon_handled() -> None:
 
 @pytest.fixture
 def ps_permanova_groups() -> Phyloseq:
-    """6-taxon, 8-sample Phyloseq with two clearly separated groups (4 per group)."""
+    """6-taxon, 12-sample Phyloseq with two clearly separated groups (6 per group)."""
     rng = np.random.default_rng(0)
-    counts_a = rng.integers(50, 100, size=(6, 4)).astype(float)
-    counts_b = rng.integers(1, 10, size=(6, 4)).astype(float)
+    counts_a = rng.integers(50, 100, size=(6, 6)).astype(float)
+    counts_b = rng.integers(1, 10, size=(6, 6)).astype(float)
     counts = np.hstack([counts_a, counts_b])
     taxa = [f"OTU{i + 1}" for i in range(6)]
-    samples = [f"S{i + 1}" for i in range(8)]
+    samples = [f"S{i + 1}" for i in range(12)]
     otu_df = pd.DataFrame(counts, index=taxa, columns=samples)
-    sam_df = pd.DataFrame({"Group": ["A"] * 4 + ["B"] * 4}, index=samples)
+    sam_df = pd.DataFrame({"Group": ["A"] * 6 + ["B"] * 6}, index=samples)
     return Phyloseq(otu=OtuTable(otu_df, taxa_are_rows=True), sam=SampleData(sam_df))
 
 

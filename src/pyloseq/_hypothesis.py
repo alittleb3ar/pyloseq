@@ -391,4 +391,8 @@ def betadisper(
         )
 
     groups = sam_df.loc[list(distance_matrix.ids), grouping_var]
-    return cast("pd.Series[Any]", _skbio_permdisp(distance_matrix, groups, permutations=permutations))
+    # Pass explicit dimensions to avoid the default of 10 failing when
+    # sample count < 10, and to suppress skbio's "computing all dimensions"
+    # warning when dimensions=0.
+    n_samples = len(distance_matrix.ids)
+    return cast("pd.Series[Any]", _skbio_permdisp(distance_matrix, groups, permutations=permutations, dimensions=n_samples))
