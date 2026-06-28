@@ -265,6 +265,104 @@ def plot_richness(
 
 
 # ---------------------------------------------------------------------------
+# plot_rarefaction_curve
+# ---------------------------------------------------------------------------
+
+
+def plot_rarefaction_curve(
+    ps: Phyloseq,
+    step: int = 500,
+    n_steps: int = 30,
+    color: str | None = None,
+    rng_seed: int | None = None,
+    title: str | None = None,
+) -> Any:
+    """Rarefaction curves showing observed richness vs. sequencing depth.
+
+    For each sample a curve is drawn by randomly subsampling (without
+    replacement) the reads at ``n_steps`` depths between ``step`` and the
+    minimum sample depth, then counting the number of distinct observed taxa
+    at each depth.  The minimum depth sets the right-hand end of all curves
+    so that every sample reaches the same maximum depth point.
+
+    R reference: vegan::rarecurve(t(otu_table(physeq)), step=...) or
+                 microbiome::plot_richness_estimates (depth-based variant)
+
+    Parameters
+    ----------
+    ps:
+        ``Phyloseq`` object. OTU table values must be integer counts.
+    step:
+        Starting depth for the rarefaction grid (first subsampling depth).
+    n_steps:
+        Number of evenly-spaced depth points from ``step`` to the minimum
+        sample depth.
+    color:
+        Column in ``sample_data`` to color the curves by.  If ``None`` all
+        curves use the default color.
+    rng_seed:
+        Seed for the subsampling RNG.  Pass ``None`` for non-reproducible
+        draws.
+    title:
+        Plot title.
+
+    Returns
+    -------
+    plotnine.ggplot
+        The underlying ``data`` attribute contains columns ``Sample``,
+        ``Depth``, ``Observed``, and any column named by ``color``.
+    """
+    from pyloseq._manipulation import _otu_taxa_rows  # noqa: PLC0415
+
+    rng = np.random.default_rng(rng_seed)
+
+    otu_taxa = _otu_taxa_rows(ps)  # taxa × samples
+    sample_sums = otu_taxa.sum(axis=0)
+    min_depth = int(sample_sums.min())
+
+    if min_depth < step:
+        raise pyloseqValidationError(
+            f"Minimum sample depth ({min_depth}) is less than step ({step}). "
+            "Lower step or rarefy to a higher minimum depth."
+        )
+
+    depths: Any = np.linspace(step, min_depth, n_steps, dtype=int)
+
+    rows: list[dict[str, Any]] = []
+    for sample in ps.sample_names:
+        counts = otu_taxa[sample].values.astype(int)
+        total = int(counts.sum())
+        pool: Any = np.repeat(np.arange(len(counts)), counts)
+        for d in depths:
+            if d > total:
+                break
+            drawn = rng.choice(pool, size=d, replace=False)
+            rows.append({"Sample": sample, "Depth": int(d), "Observed": int(np.unique(drawn).size)})
+
+    curve_df = pd.DataFrame(rows)
+
+    if color and ps.sample_data is not None and color in ps.sample_data.to_frame().columns:
+        sam_df = ps.sample_data.to_frame()[[color]]
+        curve_df = curve_df.join(sam_df, on="Sample")
+
+    mapping: dict[str, str] = {"x": "Depth", "y": "Observed", "group": "Sample"}
+    if color and color in curve_df.columns:
+        mapping["color"] = color
+
+    p = (
+        ggplot(curve_df, aes(**mapping))
+        + geom_line(alpha=0.8)
+        + xlab("Sequencing depth (reads)")
+        + ylab("Observed taxa")
+    )
+
+    if title:
+        p = p + labs(title=title)
+
+    return p
+
+
+# ---------------------------------------------------------------------------
 # plot_ordination
 # ---------------------------------------------------------------------------
 

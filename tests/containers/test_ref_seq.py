@@ -1,8 +1,7 @@
-import warnings
 from pathlib import Path
 
-import skbio
 import pytest
+import skbio
 
 from pyloseq import RefSeq
 

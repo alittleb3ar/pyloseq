@@ -29,6 +29,7 @@ from pyloseq.plotting import (
     plot_heatmap,
     plot_network,
     plot_ordination,
+    plot_rarefaction_curve,
     plot_richness,
     plot_tree,
 )
@@ -635,3 +636,42 @@ class TestConvexHullDf:
         )
         result = _convex_hull_df(df, "Group")
         assert result.empty
+
+
+# ---------------------------------------------------------------------------
+# plot_rarefaction_curve
+# ---------------------------------------------------------------------------
+
+
+def test_rarefaction_curve_returns_ggplot(ps_plot: Phyloseq) -> None:
+    p = plot_rarefaction_curve(ps_plot, step=1, n_steps=5, rng_seed=0)
+    assert isinstance(p, ggplot)
+
+
+def test_rarefaction_curve_required_columns(ps_plot: Phyloseq) -> None:
+    p = plot_rarefaction_curve(ps_plot, step=1, n_steps=5, rng_seed=0)
+    assert {"Sample", "Depth", "Observed"}.issubset(p.data.columns)
+
+
+def test_rarefaction_curve_at_most_n_steps_per_sample(ps_plot: Phyloseq) -> None:
+    n_steps = 5
+    p = plot_rarefaction_curve(ps_plot, step=1, n_steps=n_steps, rng_seed=0)
+    counts = p.data.groupby("Sample")["Depth"].count()
+    assert (counts <= n_steps).all()
+
+
+def test_rarefaction_curve_observed_le_depth(ps_plot: Phyloseq) -> None:
+    """Observed taxa can never exceed the number of reads drawn."""
+    p = plot_rarefaction_curve(ps_plot, step=1, n_steps=8, rng_seed=42)
+    assert (p.data["Observed"] <= p.data["Depth"]).all()
+
+
+def test_rarefaction_curve_color_column_added(ps_plot: Phyloseq) -> None:
+    p = plot_rarefaction_curve(ps_plot, step=1, n_steps=5, color="Group", rng_seed=0)
+    assert "Group" in p.data.columns
+
+
+def test_rarefaction_curve_step_too_large_raises(ps_plot: Phyloseq) -> None:
+    big_step = int(ps_plot.sample_sums().min()) + 1
+    with pytest.raises(pyloseqValidationError):
+        plot_rarefaction_curve(ps_plot, step=big_step, n_steps=5)

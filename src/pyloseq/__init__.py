@@ -5,7 +5,7 @@ __version__ = version("pyloseq")
 from pyloseq._distances import GUnifracResult, distance, distance_method_list, gunifrac, unifrac
 from pyloseq._diversity import estimate_richness
 from pyloseq._exceptions import pyloseqValidationError
-from pyloseq._hypothesis import multi_tax_test
+from pyloseq._hypothesis import betadisper, multi_tax_test, permanova
 from pyloseq._manipulation import (
                                 filter_taxa,
                                 kOverA,
@@ -48,6 +48,7 @@ from pyloseq.plotting import (
                                 plot_heatmap,
                                 plot_network,
                                 plot_ordination,
+                                plot_rarefaction_curve,
                                 plot_richness,
                                 plot_tree,
 )
@@ -97,8 +98,11 @@ __all__ = [
     "plot_heatmap",
     "plot_network",
     "plot_ordination",
+    "plot_rarefaction_curve",
     "plot_richness",
     "make_network",
     "plot_tree",
+    "betadisper",
     "multi_tax_test",
+    "permanova",
 ]
