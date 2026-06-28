@@ -28,13 +28,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
-[project.urls]
-Homepage = "https://alittleb3ar.github.io/pyloseq/"
-Documentation = "https://alittleb3ar.github.io/pyloseq/"
-Repository = "https://github.com/alittleb3ar/pyloseq"
-"Bug Tracker" = "https://github.com/alittleb3ar/pyloseq/issues"
-Changelog = "https://github.com/alittleb3ar/pyloseq/blob/main/CHANGELOG.md"
-
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
@@ -69,6 +62,13 @@ dev = [
     "nbformat>=5",
     "ipykernel>=6",
 ]
+
+[project.urls]
+Homepage = "https://alittleb3ar.github.io/pyloseq/"
+Documentation = "https://alittleb3ar.github.io/pyloseq/"
+Repository = "https://github.com/alittleb3ar/pyloseq"
+"Bug Tracker" = "https://github.com/alittleb3ar/pyloseq/issues"
+Changelog = "https://github.com/alittleb3ar/pyloseq/blob/main/CHANGELOG.md"
 
 [tool.hatch.envs.default]
 features = ["dev"]
