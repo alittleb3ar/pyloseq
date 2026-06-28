@@ -11,7 +11,7 @@ Includes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -336,7 +336,7 @@ def permanova(
         )
 
     groups = sam_df.loc[list(distance_matrix.ids), grouping_var]
-    return _skbio_permanova(distance_matrix, groups, permutations=permutations)
+    return cast("pd.Series[Any]", _skbio_permanova(distance_matrix, groups, permutations=permutations))
 
 
 def betadisper(
@@ -391,4 +391,4 @@ def betadisper(
         )
 
     groups = sam_df.loc[list(distance_matrix.ids), grouping_var]
-    return _skbio_permdisp(distance_matrix, groups, permutations=permutations)
+    return cast("pd.Series[Any]", _skbio_permdisp(distance_matrix, groups, permutations=permutations))

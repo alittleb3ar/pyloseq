@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -132,6 +132,8 @@ def _faith_pd(ps: Phyloseq, otu_df: pd.DataFrame, split: bool) -> pd.Series:
     """
     from skbio.diversity import alpha_diversity  # noqa: PLC0415
 
+    if ps.phy_tree is None:
+        raise pyloseqValidationError("phy_tree is required for Faith's phylogenetic diversity.")
     tree_node = ps.phy_tree._tree
     if not ps.phy_tree.is_rooted:
         tree_node = tree_node.root_at_midpoint()
@@ -147,23 +149,23 @@ def _faith_pd(ps: Phyloseq, otu_df: pd.DataFrame, split: bool) -> pd.Series:
 
     if not split:
         pooled = otu_df.sum(axis=0)
-        mat = pooled[common_taxa].values.astype(int).reshape(1, -1)
-        return alpha_diversity(
+        mat: np.ndarray[Any, np.dtype[np.int_]] = np.array(pooled[common_taxa].values).astype(int).reshape(1, -1)
+        return cast("pd.Series[Any]", alpha_diversity(
             "faith_pd",
             mat,
             ids=["pooled"],
             tree=tree_node,
             taxa=common_taxa,
-        )
+        ))
 
     aligned = otu_df[common_taxa].astype(int)
-    return alpha_diversity(
+    return cast("pd.Series[Any]", alpha_diversity(
         "faith_pd",
         aligned.values,
         ids=list(aligned.index),
         tree=tree_node,
         taxa=common_taxa,
-    )
+    ))
 
 
 # ---------------------------------------------------------------------------

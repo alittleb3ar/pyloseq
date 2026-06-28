@@ -326,13 +326,13 @@ def plot_rarefaction_curve(
             "Lower step or rarefy to a higher minimum depth."
         )
 
-    depths = np.linspace(step, min_depth, n_steps, dtype=int)
+    depths: Any = np.linspace(step, min_depth, n_steps, dtype=int)
 
     rows: list[dict[str, Any]] = []
     for sample in ps.sample_names:
         counts = otu_taxa[sample].values.astype(int)
         total = int(counts.sum())
-        pool = np.repeat(np.arange(len(counts)), counts)
+        pool: Any = np.repeat(np.arange(len(counts)), counts)
         for d in depths:
             if d > total:
                 break
