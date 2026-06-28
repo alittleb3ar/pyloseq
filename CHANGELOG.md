@@ -7,19 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-28
+
 ### Added
 
 - `GUnifracResult` — new structured return type for `gunifrac()`, exported from `pyloseq`. Supports subscript access (`result["d_0.5"]`), `.keys()`, `.values()`, and `.items()` for drop-in backwards compatibility with the previous `dict` return. Fixed matrices are also accessible as attributes: `result.d_UW`, `result.d_VAW`. **Note:** `isinstance(result, dict)` and `.get()` no longer work — use subscript or attribute access instead.
 - `py.typed` marker — pyloseq now declares PEP 561 type information, letting downstream type checkers (mypy, pyright) use the library's annotations without extra configuration.
-
-### Added (continued)
-
 - `gunifrac` — Generalized UniFrac distance matrices (Chen et al. 2012 *Bioinformatics* 28:2106–2113). Matches R `GUniFrac` package API.
+- `Phyloseq.to_deseq2` — exports a `Phyloseq` object to a `(counts, metadata)` tuple ready for `pydeseq2.DeseqDataSet`.
 - `plot_richness`: new `boxplot` parameter (default `True`); set `False` for a points-only plot when boxes add noise to small groups.
 - `make_network`: `distance` now accepts a precomputed `skbio.stats.distance.DistanceMatrix` in addition to a metric name string — enables use of custom distances such as those returned by `gunifrac`.
 - `plot_network`: edge width is now scaled inversely by distance (closer samples → thicker line), matching R `plot_net`. Shape legends with > 6 unique values are suppressed automatically to avoid a plotnine rendering crash.
 - `plot_heatmap` — `method=None` skips ordination and preserves the original sample/taxa order; `label` relabels the x-axis ticks from a `sample_data` column; `taxa_label` relabels the y-axis ticks from a taxonomic rank. These mirror R phyloseq's `method=NULL`, `sample.label`, and `taxa.label`.
-- New example notebook: Torondel et al. (2016) pit-latrine microbiome case study demonstrating GUniFrac-based network analysis.
+- New example notebooks: Torondel et al. (2016) pit-latrine microbiome (GUniFrac-based network analysis); Strano et al. (2023) sponge microbiome; Garrido-Sanz et al. (2025) wheat rhizosphere community.
 
 ### Changed
 
@@ -89,4 +89,6 @@ Initial release of pyloseq — a native Python port of R/Bioconductor
 - **`PhyTree.from_ape_rds()`** is not implemented; use scikit-bio or ete3 to load Newick/Nexus trees directly.
 - **`se.ACE`** (standard error of the ACE richness estimator) is not computed; the point estimate (`ACE`) is returned and a warning is issued.
 
+[Unreleased]: https://github.com/alittleb3ar/pyloseq/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/alittleb3ar/pyloseq/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/alittleb3ar/pyloseq/releases/tag/v1.0.0
