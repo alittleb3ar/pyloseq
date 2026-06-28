@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 import pyloseq
-from pyloseq import OtuTable, Phyloseq, SampleData, TaxTable, multi_tax_test
+from pyloseq import OtuTable, Phyloseq, SampleData, TaxTable, betadisper, multi_tax_test, permanova
 from pyloseq._hypothesis import _holm
 
 # ---------------------------------------------------------------------------
@@ -278,3 +278,93 @@ def test_constant_taxon_handled() -> None:
     result = multi_tax_test(ps, "Group")
     assert result.loc["OTU_zero", "rawp"] == 1.0
     assert not result["adjp"].isna().any()
+
+
+# ===========================================================================
+# permanova / betadisper
+# ===========================================================================
+
+
+@pytest.fixture
+def ps_permanova_groups() -> Phyloseq:
+    """6-taxon, 8-sample Phyloseq with two clearly separated groups (4 per group)."""
+    rng = np.random.default_rng(0)
+    counts_a = rng.integers(50, 100, size=(6, 4)).astype(float)
+    counts_b = rng.integers(1, 10, size=(6, 4)).astype(float)
+    counts = np.hstack([counts_a, counts_b])
+    taxa = [f"OTU{i + 1}" for i in range(6)]
+    samples = [f"S{i + 1}" for i in range(8)]
+    otu_df = pd.DataFrame(counts, index=taxa, columns=samples)
+    sam_df = pd.DataFrame({"Group": ["A"] * 4 + ["B"] * 4}, index=samples)
+    return Phyloseq(otu=OtuTable(otu_df, taxa_are_rows=True), sam=SampleData(sam_df))
+
+
+def test_permanova_returns_series(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    result = permanova(dm, ps_permanova_groups, "Group", permutations=99)
+    assert isinstance(result, pd.Series)
+
+
+def test_permanova_has_expected_keys(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    result = permanova(dm, ps_permanova_groups, "Group", permutations=99)
+    assert "p-value" in result.index
+    assert "test statistic" in result.index
+
+
+def test_permanova_significant_for_separated_groups(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    result = permanova(dm, ps_permanova_groups, "Group", permutations=999)
+    assert result["p-value"] <= 0.05
+
+
+def test_permanova_missing_sample_data_raises() -> None:
+    from pyloseq import distance as pldistance
+
+    ps_no_meta = Phyloseq(
+        otu=OtuTable(
+            pd.DataFrame({"S1": [1.0], "S2": [2.0]}, index=["OTU1"]),
+            taxa_are_rows=True,
+        )
+    )
+    dm = pldistance(ps_no_meta, "bray")
+    with pytest.raises(pyloseq.pyloseqValidationError, match="sample_data"):
+        permanova(dm, ps_no_meta, "Group")
+
+
+def test_permanova_missing_column_raises(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    with pytest.raises(pyloseq.pyloseqValidationError, match="NoSuchCol"):
+        permanova(dm, ps_permanova_groups, "NoSuchCol")
+
+
+def test_betadisper_returns_series(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    result = betadisper(dm, ps_permanova_groups, "Group", permutations=99)
+    assert isinstance(result, pd.Series)
+
+
+def test_betadisper_has_pvalue(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    result = betadisper(dm, ps_permanova_groups, "Group", permutations=99)
+    assert "p-value" in result.index
+
+
+def test_betadisper_missing_column_raises(ps_permanova_groups: Phyloseq) -> None:
+    from pyloseq import distance as pldistance
+
+    dm = pldistance(ps_permanova_groups, "bray")
+    with pytest.raises(pyloseq.pyloseqValidationError, match="NoSuchCol"):
+        betadisper(dm, ps_permanova_groups, "NoSuchCol")

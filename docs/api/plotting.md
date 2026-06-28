@@ -69,6 +69,36 @@ p = plot_richness(ps, x="SampleType", color="SampleType")
 
 ---
 
+## plot_rarefaction_curve
+
+Rarefaction curves showing observed richness as a function of sequencing depth. For each sample the OTU counts are subsampled (without replacement) at `n_steps` evenly-spaced depths between `step` and the minimum sample depth, and the number of distinct observed taxa is counted at each depth:
+
+```python
+from pyloseq import plot_rarefaction_curve
+
+p = plot_rarefaction_curve(ps, step=500, n_steps=30)
+p.draw()
+
+# Colour curves by a metadata variable
+p = plot_rarefaction_curve(ps, step=200, n_steps=40, color="SampleType")
+```
+
+All curves share the same rightmost depth (the minimum sample depth across all samples), so the plot shows where each sample's curve plateaus relative to the overall sequencing effort.
+
+The returned ggplot's `data` attribute contains columns `Sample`, `Depth`, and `Observed` (plus the `color` column if one was requested), enabling further customisation:
+
+```python
+p = plot_rarefaction_curve(ps, step=500, n_steps=20, rng_seed=42)
+p + theme_bw() + labs(title="Rarefaction curves")
+```
+
+!!! note
+    Each depth point uses an independent random draw, not a cumulative one. The curves show expected richness at each depth — use a fixed `rng_seed` for reproducible figures, and increase `n_steps` for smoother curves.
+
+::: pyloseq.plot_rarefaction_curve
+
+---
+
 ## plot_ordination
 
 Scatter plot of ordination results. The `kind` parameter controls what is plotted:

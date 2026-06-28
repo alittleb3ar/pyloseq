@@ -161,3 +161,48 @@ def test_estimate_richness_split_false_subset_measures(ps: Phyloseq) -> None:
     df = estimate_richness(ps, measures=["Shannon", "Simpson"], split=False)
     assert list(df.columns) == ["Shannon", "Simpson"]
     assert len(df) == 1
+
+
+# ===========================================================================
+# Faith's PD
+# ===========================================================================
+
+
+def test_pd_requires_tree(ps: Phyloseq) -> None:
+    with pytest.raises(pyloseq.pyloseqValidationError, match="phy_tree"):
+        estimate_richness(ps, measures=["PD"])
+
+
+def test_pd_returns_positive_values(ps_with_tree: Phyloseq) -> None:
+    df = estimate_richness(ps_with_tree, measures=["PD"])
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == ps_with_tree.nsamples
+    assert (df["PD"] > 0).all()
+
+
+def test_pd_mixed_measures(ps_with_tree: Phyloseq) -> None:
+    df = estimate_richness(ps_with_tree, measures=["Observed", "Shannon", "PD"])
+    assert list(df.columns) == ["Observed", "Shannon", "PD"]
+    assert len(df) == ps_with_tree.nsamples
+
+
+def test_pd_not_in_default_without_tree(ps: Phyloseq) -> None:
+    df = estimate_richness(ps)
+    assert "PD" not in df.columns
+
+
+def test_pd_in_default_with_tree(ps_with_tree: Phyloseq) -> None:
+    df = estimate_richness(ps_with_tree)
+    assert "PD" in df.columns
+
+
+def test_pd_split_false(ps_with_tree: Phyloseq) -> None:
+    df = estimate_richness(ps_with_tree, measures=["PD"], split=False)
+    assert len(df) == 1
+    assert df.loc["pooled", "PD"] > 0
+
+
+def test_pd_pooled_ge_per_sample_max(ps_with_tree: Phyloseq) -> None:
+    per_sample = estimate_richness(ps_with_tree, measures=["PD"])
+    pooled = estimate_richness(ps_with_tree, measures=["PD"], split=False)
+    assert pooled.loc["pooled", "PD"] >= per_sample["PD"].max()

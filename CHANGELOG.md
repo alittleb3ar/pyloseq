@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `GUnifracResult` — new structured return type for `gunifrac()`, exported from `pyloseq`. Supports subscript access (`result["d_0.5"]`), `.keys()`, `.values()`, and `.items()` for drop-in backwards compatibility with the previous `dict` return. Fixed matrices are also accessible as attributes: `result.d_UW`, `result.d_VAW`. **Note:** `isinstance(result, dict)` and `.get()` no longer work — use subscript or attribute access instead.
 - `py.typed` marker — pyloseq now declares PEP 561 type information, letting downstream type checkers (mypy, pyright) use the library's annotations without extra configuration.
+- `estimate_richness`: new `"PD"` measure — Faith's phylogenetic diversity (Faith 1992). Requires `phy_tree` on the Phyloseq object; the tree is midpoint-rooted internally. Excluded from the default measure set when no tree is present.
+- `plot_rarefaction_curve(ps, step, n_steps, color, rng_seed)` — rarefaction curves as a plotnine ggplot. Subsamples each sample at `n_steps` evenly-spaced depths between `step` and the minimum sample depth; optionally colors curves by a `sample_data` column.
+- `permanova(distance_matrix, ps, grouping_var, permutations)` — PERMANOVA on a precomputed distance matrix. Thin wrapper around `skbio.stats.distance.permanova` that extracts group labels from `ps.sample_data` and aligns them to the distance matrix IDs automatically. R reference: `vegan::adonis2`.
+- `betadisper(distance_matrix, ps, grouping_var, permutations)` — PERMDISP test for homogeneity of multivariate dispersions. Same interface as `permanova`; wraps `skbio.stats.distance.permdisp`. R reference: `vegan::betadisper + vegan::permutest`.
 
 ### Added (continued)
 

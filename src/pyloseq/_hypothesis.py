@@ -1,9 +1,12 @@
-"""Multiple hypothesis testing for differential abundance analysis.
+"""Statistical tests for microbiome community analysis.
 
-Implements per-taxon tests for comparing two groups, with several
-multiple-testing correction options including the permutation-based
-Westfall-Young step-down FWER procedure that R's multtest::mt.minP uses.
-
+Includes:
+- Per-taxon differential abundance tests (multi_tax_test) with multiple-testing
+  correction, including the permutation-based Westfall-Young step-down FWER
+  procedure that R's multtest::mt.minP uses.
+- Community-level permutation tests: permanova() and betadisper(), thin wrappers
+  around scikit-bio that extract grouping labels from Phyloseq sample_data
+  automatically.
 """
 
 from __future__ import annotations
@@ -17,6 +20,8 @@ from pyloseq._exceptions import pyloseqValidationError
 from pyloseq._manipulation import _otu_taxa_rows
 
 if TYPE_CHECKING:
+    from skbio.stats.distance import DistanceMatrix
+
     from pyloseq._phyloseq import Phyloseq
 
 
@@ -270,3 +275,120 @@ def _westfall_young_fwer(
     result = np.empty(M)
     result[order] = np.minimum(monotone, 1.0)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Community-level permutation tests
+# ---------------------------------------------------------------------------
+
+
+def permanova(
+    distance_matrix: DistanceMatrix,
+    ps: Phyloseq,
+    grouping_var: str,
+    permutations: int = 999,
+) -> pd.Series:
+    """PERMANOVA test on a precomputed distance matrix.
+
+    Thin wrapper around :func:`skbio.stats.distance.permanova` that extracts
+    the grouping variable from ``ps.sample_data`` and aligns it to the
+    distance matrix IDs automatically.
+
+    R reference: vegan::adonis2(dist ~ group, data=sample_data(physeq))
+
+    Parameters
+    ----------
+    distance_matrix:
+        Pairwise distance matrix (e.g. from :func:`pyloseq.distance` or
+        :func:`pyloseq.gunifrac`).
+    ps:
+        ``Phyloseq`` object whose ``sample_data`` contains ``grouping_var``.
+        Only the samples present in ``distance_matrix.ids`` are used; the
+        rest of ``ps`` is ignored, so a filtered/subsetted distance matrix
+        works correctly alongside the original ``ps``.
+    grouping_var:
+        Column name in ``sample_data`` defining the groups to compare.
+    permutations:
+        Number of permutations for the pseudo-F null distribution.
+
+    Returns
+    -------
+    pd.Series
+        scikit-bio PERMANOVA result with keys ``method name``,
+        ``test statistic name``, ``sample size``, ``number of groups``,
+        ``test statistic``, ``p-value``, ``number of permutations``.
+
+    Raises
+    ------
+    pyloseqValidationError
+        If ``sample_data`` is missing or ``grouping_var`` is not found.
+    """
+    from skbio.stats.distance import permanova as _skbio_permanova  # noqa: PLC0415
+
+    if ps.sample_data is None:
+        raise pyloseqValidationError("permanova requires sample_data on the Phyloseq object.")
+
+    sam_df = ps.sample_data.to_frame()
+    if grouping_var not in sam_df.columns:
+        raise pyloseqValidationError(
+            f"grouping_var '{grouping_var}' not found in sample_data. "
+            f"Available: {list(sam_df.columns)}"
+        )
+
+    groups = sam_df.loc[list(distance_matrix.ids), grouping_var]
+    return _skbio_permanova(distance_matrix, groups, permutations=permutations)
+
+
+def betadisper(
+    distance_matrix: DistanceMatrix,
+    ps: Phyloseq,
+    grouping_var: str,
+    permutations: int = 999,
+) -> pd.Series:
+    """PERMDISP test for homogeneity of multivariate dispersions.
+
+    Thin wrapper around :func:`skbio.stats.distance.permdisp` that extracts
+    the grouping variable from ``ps.sample_data`` and aligns it to the
+    distance matrix IDs automatically.
+
+    R reference: vegan::betadisper() + vegan::permutest()
+
+    Parameters
+    ----------
+    distance_matrix:
+        Pairwise distance matrix (e.g. from :func:`pyloseq.distance` or
+        :func:`pyloseq.gunifrac`).
+    ps:
+        ``Phyloseq`` object whose ``sample_data`` contains ``grouping_var``.
+        Only samples present in ``distance_matrix.ids`` are used.
+    grouping_var:
+        Column name in ``sample_data`` defining the groups.
+    permutations:
+        Number of permutations for the null distribution.
+
+    Returns
+    -------
+    pd.Series
+        scikit-bio PERMDISP result with keys ``method name``,
+        ``test statistic name``, ``sample size``, ``number of groups``,
+        ``test statistic``, ``p-value``, ``number of permutations``.
+
+    Raises
+    ------
+    pyloseqValidationError
+        If ``sample_data`` is missing or ``grouping_var`` is not found.
+    """
+    from skbio.stats.distance import permdisp as _skbio_permdisp  # noqa: PLC0415
+
+    if ps.sample_data is None:
+        raise pyloseqValidationError("betadisper requires sample_data on the Phyloseq object.")
+
+    sam_df = ps.sample_data.to_frame()
+    if grouping_var not in sam_df.columns:
+        raise pyloseqValidationError(
+            f"grouping_var '{grouping_var}' not found in sample_data. "
+            f"Available: {list(sam_df.columns)}"
+        )
+
+    groups = sam_df.loc[list(distance_matrix.ids), grouping_var]
+    return _skbio_permdisp(distance_matrix, groups, permutations=permutations)

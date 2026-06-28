@@ -27,7 +27,11 @@ _ALL_MEASURES = [
     "Simpson",
     "InvSimpson",
     "Fisher",
+    "PD",
 ]
+
+# Measures that require a rooted phylogenetic tree
+_TREE_MEASURES = {"PD"}
 
 
 def estimate_richness(
@@ -45,8 +49,9 @@ def estimate_richness(
         ``Phyloseq`` object. OTU table values should be integer counts.
     measures:
         Subset of ``["Observed", "Chao1", "se.chao1", "ACE", "se.ACE",
-        "Shannon", "Simpson", "InvSimpson", "Fisher"]``.
-        ``None`` (default) returns all.
+        "Shannon", "Simpson", "InvSimpson", "Fisher", "PD"]``.
+        ``None`` (default) returns all non-tree measures (``PD`` is excluded
+        from the default set when the object has no ``phy_tree``).
     split:
         If ``True`` (default), compute per sample. If ``False``, pool all
         samples first (matches R behavior). The single pooled row is labelled
@@ -57,15 +62,39 @@ def estimate_richness(
     pd.DataFrame
         Indexed by sample name (or ``"pooled"`` when ``split=False``); columns
         are the requested measures.
+
+    Raises
+    ------
+    pyloseqValidationError
+        If ``"PD"`` is requested but ``ps.phy_tree`` is ``None``, or if any
+        measure name is not recognised.
+
+    Notes
+    -----
+    ``"PD"`` (Faith's phylogenetic diversity, Faith 1992) sums the total branch
+    length of the minimum spanning clade connecting all observed taxa on the
+    tree.  It requires a rooted tree; the tree is midpoint-rooted internally if
+    not already rooted, matching R's ``phangorn::midpoint`` convention.
     """
     if measures is None:
-        measures = list(_ALL_MEASURES)
+        # Exclude PD from the default set when there is no tree to avoid
+        # surprising errors for callers who don't know about PD.
+        if ps.phy_tree is not None:
+            measures = list(_ALL_MEASURES)
+        else:
+            measures = [m for m in _ALL_MEASURES if m not in _TREE_MEASURES]
     else:
         bad = [m for m in measures if m not in _ALL_MEASURES]
         if bad:
             raise pyloseqValidationError(
                 f"Unknown measure(s): {bad}. Choose from: {_ALL_MEASURES}"
             )
+
+    if "PD" in measures and ps.phy_tree is None:
+        raise pyloseqValidationError(
+            "'PD' (Faith's phylogenetic diversity) requires a phylogenetic tree "
+            "(phy_tree) on the Phyloseq object."
+        )
 
     if "se.ACE" in measures:
         warnings.warn(
@@ -74,20 +103,67 @@ def estimate_richness(
             stacklevel=2,
         )
 
-    otu_df = _otu_samples_rows(ps)
+    non_tree = [m for m in measures if m not in _TREE_MEASURES]
+    otu_df = _otu_samples_rows(ps)  # samples × taxa
 
     if not split:
         # Pool across all samples: sum each taxon's counts, compute one row.
         pooled = otu_df.sum(axis=0)
-        rows = {"pooled": _richness_single(np.asarray(pooled), measures)}
+        rows = {"pooled": _richness_single(np.asarray(pooled), non_tree)}
     else:
         rows = {
-            str(sid): _richness_single(np.asarray(row), measures)
+            str(sid): _richness_single(np.asarray(row), non_tree)
             for sid, row in otu_df.iterrows()
         }
 
     df = pd.DataFrame.from_dict(rows, orient="index")
+
+    if "PD" in measures:
+        df["PD"] = _faith_pd(ps, otu_df, split=split)
+
     return df[measures]
+
+
+def _faith_pd(ps: Phyloseq, otu_df: pd.DataFrame, split: bool) -> pd.Series:
+    """Compute Faith's phylogenetic diversity (Faith 1992) via scikit-bio.
+
+    Midpoint-roots the tree if not already rooted, matching R's phangorn::midpoint
+    convention.  Taxa absent from the tree are silently dropped before computing.
+    """
+    from skbio.diversity import alpha_diversity  # noqa: PLC0415
+
+    tree_node = ps.phy_tree._tree
+    if not ps.phy_tree.is_rooted:
+        tree_node = tree_node.root_at_midpoint()
+
+    tree_tips = {n.name for n in tree_node.tips()}
+    common_taxa = [t for t in otu_df.columns if t in tree_tips]
+
+    if not common_taxa:
+        raise pyloseqValidationError(
+            "No OTU/ASV names in the OTU table match tree tip labels. "
+            "Verify that taxa names are consistent between the OTU table and tree."
+        )
+
+    if not split:
+        pooled = otu_df.sum(axis=0)
+        mat = pooled[common_taxa].values.astype(int).reshape(1, -1)
+        return alpha_diversity(
+            "faith_pd",
+            mat,
+            ids=["pooled"],
+            tree=tree_node,
+            taxa=common_taxa,
+        )
+
+    aligned = otu_df[common_taxa].astype(int)
+    return alpha_diversity(
+        "faith_pd",
+        aligned.values,
+        ids=list(aligned.index),
+        tree=tree_node,
+        taxa=common_taxa,
+    )
 
 
 # ---------------------------------------------------------------------------
