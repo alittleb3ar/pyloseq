@@ -27,8 +27,9 @@ alpha = estimate_richness(ps, measures=["Observed", "Chao1", "Shannon"])
 | `Simpson` | Simpson's diversity (1 − Σ p²) |
 | `InvSimpson` | Inverse Simpson (1 / Σ p²) |
 | `Fisher` | Fisher's log-series alpha |
+| `PD` | Faith's phylogenetic diversity (Faith 1992); requires `phy_tree` |
 
-Pass `measures=None` (the default) to compute all nine. Unrecognized measure names raise `pyloseqValidationError`.
+Pass `measures=None` (the default) to compute all available measures. When `ps.phy_tree` is `None`, `PD` is excluded from the defaults. Unrecognized measure names raise `pyloseqValidationError`.
 
 **Pooled richness:**
 
@@ -38,6 +39,18 @@ Pass `split=False` to pool all samples into a single community before computing:
 pooled = estimate_richness(ps, split=False)
 # Returns a single row labelled "pooled"
 ```
+
+**Faith's Phylogenetic Diversity:**
+
+```python
+# PD requires a phylogenetic tree on the Phyloseq object
+pd_df = estimate_richness(ps_with_tree, measures=["PD"])
+
+# Mix PD with standard measures in one call
+alpha = estimate_richness(ps_with_tree, measures=["Observed", "Shannon", "PD"])
+```
+
+`PD` is the sum of branch lengths in the minimum spanning tree connecting all observed taxa plus the root. The tree is midpoint-rooted internally if unrooted, matching the convention used by R's `phangorn::midpoint`.
 
 !!! note
     Chao1, ACE, Observed, and Fisher are count-based; pass raw integer counts, not relative abundances. Applying `estimate_richness` after `transform_sample_counts` will produce incorrect estimates for those measures.
